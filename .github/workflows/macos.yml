@@ -45,7 +45,9 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: |
-          npx electron-builder --mac --x64 --arm64 \
+          # --publish never：只打包。electron-builder 在 CI 里会默认尝试发布，
+          # 没配 GH_TOKEN 就直接报错；发布交给下面的 gh release upload 步骤。
+          npx electron-builder --mac --x64 --arm64 --publish never \
             -c.extraMetadata.version=${{ github.event.inputs.version || '1.0.0' }} \
             -c.mac.identity=null
 
