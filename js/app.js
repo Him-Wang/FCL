@@ -1145,6 +1145,29 @@ const placeholder = () => {
   /* ---------------- 皮肤库（一键换肤） ---------------- */
   // 皮肤库缩略图：裁出「头部正面」放大成头像，比直接显示整张纹理好看得多
   const faceThumbCache = new Map();
+  /** 从皮肤贴图裁出头部头像（32x32 底的正面 + 帽子层），返回 dataURL */
+  function skinHeadDataUrl(dataUrl, size = 64) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const c = document.createElement('canvas');
+          c.width = size;
+          c.height = size;
+          const ctx = c.getContext('2d');
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(img, 8, 8, 8, 8, 0, 0, size, size);
+          ctx.drawImage(img, 40, 8, 8, 8, 0, 0, size, size);
+          resolve(c.toDataURL('image/png'));
+        } catch (e) {
+          resolve('');
+        }
+      };
+      img.onerror = () => resolve('');
+      img.src = dataUrl;
+    });
+  }
+
   function faceThumb(it) {
     if (faceThumbCache.has(it.id)) return faceThumbCache.get(it.id);
     const p = new Promise((resolve) => {
@@ -1732,7 +1755,12 @@ const placeholder = () => {
         uuid: r.uuid,
         accessToken: r.accessToken,
         avatar: r.avatar || makeAvatar(r.name, 'random', 8),
+        skin: r.skinDataUrl ? { variant: r.skinVariant || 'classic', dataUrl: r.skinDataUrl } : undefined,
       };
+      if (acc.skin && acc.skin.dataUrl) {
+        const head = await skinHeadDataUrl(acc.skin.dataUrl, 64);
+        if (head) acc.avatar = head;
+      }
       state.accounts.push(acc);
       state.currentAccount = acc.id;
       save();
@@ -1745,6 +1773,9 @@ const placeholder = () => {
       if (/已取消/.test(msg)) {
         appendLog('info', '已取消微软登录');
         toast('已取消微软登录');
+      } else if (/server_error|matching cookie|contextID|没有返回授权码|没有 code/i.test(msg)) {
+        appendLog('error', '微软登录失败：' + msg);
+        openBrowserLogin(msg);
       } else {
         appendLog('error', '微软登录失败：' + msg);
         toast('登录失败：' + msg, 5000);
@@ -1752,6 +1783,74 @@ const placeholder = () => {
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = old; }
     }
+  }
+
+  /* 微软登录的浏览器兜底：内嵌窗口被安全策略拦掉时用 */
+  function openBrowserLogin(reason) {
+    openModal('微软登录（浏览器方式）', `
+      <p style="margin:0 0 8px">内嵌窗口被微软的登录策略拦住了（${esc(String(reason).slice(0, 80))}）。</p>
+      <p class="tip" style="margin:0 0 12px">改用系统浏览器登录：点下面的按钮打开授权页，登录后浏览器会跳到一个<br>
+        <code>login.live.com/oauth20_desktop.srf?code=...</code> 的页面（<b>页面可能是空白或报错，这是正常的</b>），
+        <b>把地址栏那一整段网址复制下来</b>，粘贴到下面的输入框。</p>
+      <div class="row" style="gap:8px;margin-bottom:10px">
+        <button type="button" class="btn" data-act="ms-open-browser">在浏览器中打开登录页</button>
+      </div>
+      <label class="muted" style="display:block;margin-bottom:4px">粘贴回调链接：</label>
+      <input id="msUrl" placeholder="https://login.live.com/oauth20_desktop.srf?code=..." style="width:100%" />
+      <div class="row" style="justify-content:flex-end;gap:8px;margin-top:12px">
+        <button type="button" class="btn" data-act="ms-cancel">取消</button>
+        <button type="button" class="btn primary" data-act="ms-submit">完成登录</button>
+      </div>
+    `);
+
+    $('#modalBody [data-act="ms-open-browser"]').forEach((el) => {
+      el.onclick = async () => {
+        try {
+          await L.msBrowserLogin();
+          toast('已用浏览器打开登录页，登录后复制地址栏链接贴回来', 5000);
+        } catch (e) {
+          toast('打开浏览器失败：' + (e.message || e));
+        }
+      };
+    });
+    $('#modalBody [data-act="ms-cancel"]').forEach((el) => (el.onclick = () => closeModal()));
+    $('#modalBody [data-act="ms-submit"]').forEach((el) => {
+      el.onclick = async () => {
+        const url = ($('#msUrl') || {}).value || '';
+        if (!url.trim()) { toast('请先粘贴回调链接'); return; }
+        el.disabled = true;
+        el.textContent = '登录中…';
+        try {
+          const acc = await L.msCompleteUrl(url);
+          const account = {
+            id: 'a' + Date.now(),
+            name: acc.name,
+            uuid: acc.uuid,
+            type: 'microsoft',
+            accessToken: acc.accessToken,
+            skin: acc.skinDataUrl ? { variant: acc.skinVariant || 'classic', dataUrl: acc.skinDataUrl } : undefined,
+          };
+          if (account.skin && account.skin.dataUrl) {
+            const head = await skinHeadDataUrl(account.skin.dataUrl, 64);
+            if (head) account.avatar = head;
+          } else {
+            account.avatar = makeAvatar(account.name, 'random', 8);
+          }
+          state.accounts.push(account);
+          state.currentAccount = account.id;
+          save();
+          renderAccounts();
+          renderHero();
+          closeModal();
+          toast('微软账号登录成功：' + account.name, 4000);
+          appendLog('info', '微软账号登录成功：' + account.name);
+        } catch (e) {
+          toast('登录失败：' + (e.message || e), 6000);
+          el.disabled = false;
+          el.textContent = '完成登录';
+        }
+      };
+    });
   }
 
   /* ---------------- 导入本地内容 ---------------- */
@@ -2002,6 +2101,23 @@ const placeholder = () => {
   $('#memRange').addEventListener('input', (e) => {
     state.settings.mem = +e.target.value; save(); renderSettings(); renderEnv();
   });
+  if ($('#optCloseAsk')) {
+    $('#optCloseAsk').addEventListener('change', async (e) => {
+      const want = e.target.checked;
+      try {
+        const r = await L.setCloseAsk(want);
+        if (!r || !r.ok) {
+          toast('保存失败：' + ((r && r.error) || '未知错误'));
+          return;
+        }
+        state.paths = Object.assign({}, state.paths, { closeAskEach: want });
+        toast(want ? '以后每次点 × 都会问你' : '已恢复：按上次的选择直接执行', 3200);
+      } catch (err) {
+        toast('设置失败：' + (err.message || err));
+      }
+    });
+  }
+
   if ($('#optTray')) {
     $('#optTray').addEventListener('change', async (e) => {
       const want = e.target.checked;

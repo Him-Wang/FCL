@@ -1,7 +1,7 @@
 {
   "name": "fcl",
   "productName": "FCL",
-  "version": "1.3.1",
+  "version": "1.3.3",
   "description": "FishCraftLauncher (FCL) — PCL 风格的 Minecraft 桌面启动器（Electron）",
   "main": "main.js",
   "scripts": {

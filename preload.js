@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('launcher', {
   setAppRoot: (req) => ipcRenderer.invoke('app:set-root', req),
   restart: () => ipcRenderer.invoke('app:restart'),
   setTray: (v) => ipcRenderer.invoke('app:set-tray', v),
+  setCloseAsk: (v) => ipcRenderer.invoke('app:set-close-ask', v),
   onTrayHint: (cb) => sub('tray:hint', cb),
   onAlreadyRunning: (cb) => sub('app:already-running', cb),
   onAskClose: (cb) => sub('app:ask-close', cb),
@@ -65,6 +66,8 @@ contextBridge.exposeInMainWorld('launcher', {
   msStart: (clientId) => ipcRenderer.invoke('ms:start', clientId),
   msPoll: (req) => ipcRenderer.invoke('ms:poll', req),
   msLogin: () => ipcRenderer.invoke('ms:login'),
+  msBrowserLogin: () => ipcRenderer.invoke('ms:browser-login'),
+  msCompleteUrl: (url) => ipcRenderer.invoke('ms:complete-url', url),
 
   modToggle: (req) => ipcRenderer.invoke('mc:mod-toggle', req),
   modDelete: (req) => ipcRenderer.invoke('mc:mod-delete', req),

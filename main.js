@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, nativeImage, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -95,6 +95,12 @@ try {
   process.env.TEMP = TEMP_DIR;
   process.env.TMP = TEMP_DIR;
   app.commandLine.appendSwitch('disk-cache-dir', path.join(DATA_DIR, 'Cache'));
+  // 微软登录需要跨站 Cookie（login.live.com <-> account.live.com），Chromium 新版默认拦截会让
+  // OAuth 回调变成 server_error / "contextID ... no matching cookie"，这里显式关掉该实验特性。
+  app.commandLine.appendSwitch(
+    'disable-features',
+    'TrackingProtection3pcd,ThirdPartyCookieDeprecation,ThirdPartyStoragePartitioning,StorageAccessAPI',
+  );
 } catch (e) {}
 
 
@@ -171,6 +177,11 @@ function patchCfg(patch) {
 const USE_TRANSPARENT = UI_CFG.transparent !== false; // 默认开启；只有配置文件里显式写 false 才用不透明窗口
 
 /* 设置里切换「窗口背景透明」：写进 config.json，重启后生效 */
+ipcMain.handle('app:set-close-ask', async (_e, val) => {
+  const ok = patchCfg({ closeAskEach: !!val, closeAskV: 2, ...(val ? { closeAsked: false } : { closeAsked: true }) });
+  return ok ? { ok: true, closeAskEach: !!val } : { ok: false, error: '写入 config.json 失败' };
+});
+
 ipcMain.handle('app:set-tray', async (_e, val) => {
   const ok = patchCfg({ minimizeToTray: !!val });
   return ok ? { ok: true, minimizeToTray: !!val } : { ok: false, error: '写入 config.json 失败' };
@@ -731,8 +742,11 @@ win.on('closed', () => {
     if (quitting) return;
     e.preventDefault();
 
-    // 已经问过：按记住的选择走
-    if (UI_CFG.closeAsked === true) {
+    // 已经问过（且是当前这版问的）：按记住的选择走。
+    // closeAskV 用来区分旧配置：1.2.x 写过 closeAsked=true，如果只认这个标记，
+    // 老用户升级后就再也不会看到询问、直接最小化，看起来像"弹窗丢了"。
+    const askedNow = UI_CFG.closeAsked === true && UI_CFG.closeAskV === 2;
+    if (askedNow && UI_CFG.closeAskEach !== true) {
       if (UI_CFG.minimizeToTray === false) {
         quitting = true;
         app.quit();
@@ -765,6 +779,7 @@ win.on('closed', () => {
     closeAskedPending = false;
     patchCfg({
       closeAsked: true,
+      closeAskV: 2,
       ...(o.remember === false ? {} : { minimizeToTray: !!o.minimize }),
     });
     log('info', '关闭方式选择：' + (o.minimize ? '最小化到托盘' : '直接退出') + (o.remember === false ? '（本次有效）' : '（已记住）'));
@@ -905,6 +920,13 @@ async function performInstall(req, onProgress) {
     return installer.installFabric(req.mc, req.loader, gameDir, onProgress, req.assets !== false);
   }
   if (req.kind === 'forge') {
+    if (!req.forge) {
+      const list = await installer.forgeVersions(req.mc).catch(() => []);
+      if (!list.length) {
+        throw new Error('Forge 还没有发布 ' + req.mc + ' 的安装包；换一个正式版（例如 26.2 / 26.3）再试');
+      }
+      req.forge = list[0];
+    }
     const java = await findJava(req.javaPath);
     if (!java.path) throw new Error('未找到 Java，无法运行 Forge 安装器');
     return installer.installForge(req.mc, req.forge, gameDir, java.path, onProgress);
@@ -1195,6 +1217,7 @@ ipcMain.handle('app:root', async () => ({
   version: app.getVersion(),
   transparent: USE_TRANSPARENT,
   minimizeToTray: UI_CFG.minimizeToTray !== false,
+  closeAskEach: UI_CFG.closeAskEach === true,
 }));
 
 ipcMain.handle('app:set-root', async (_e, req) => {
@@ -1642,6 +1665,7 @@ ipcMain.handle('ms:poll', async (_e, req) => ms.pollLogin(req.clientId, req.devi
 
 /* ---------------- 微软登录：内嵌登录窗口（玩家不用申请 Azure 应用） ---------------- */
 let msLoginWin = null;
+let msLoginNeedsCookieReset = false;
 async function openMicrosoftLogin() {
   if (msLoginWin) throw new Error('登录窗口已经打开了');
   return await new Promise((resolve, reject) => {
@@ -1722,6 +1746,34 @@ async function openMicrosoftLogin() {
 
 ipcMain.handle('ms:login', () => openMicrosoftLogin());
 
+/* 兜底：内嵌窗口被微软拦掉时，改用系统浏览器登录，再把回调链接粘回来 */
+ipcMain.handle('ms:browser-login', async () => {
+  const url = ms.buildAuthUrl();
+  await shell.openExternal(url);
+  log('info', '微软登录：已在系统浏览器中打开授权页');
+  return { ok: true, url };
+});
+
+ipcMain.handle('ms:complete-url', async (_e, raw) => {
+  const text = String(raw || '').trim();
+  if (!text) throw new Error('没有粘贴链接');
+  let code = '';
+  try {
+    const u = new URL(text);
+    code = u.searchParams.get('code') || '';
+    const errCode = u.searchParams.get('error');
+    if (!code && errCode) throw new Error('微软返回错误：' + errCode);
+  } catch (e) {
+    // 允许只粘贴 code 本身
+    if (/^[A-Za-z0-9._~-]{20,}$/.test(text)) code = text;
+    else throw new Error('这段内容里没有 code，请复制浏览器地址栏的完整链接');
+  }
+  if (!code) throw new Error('链接里没有 code');
+  log('info', '微软登录：正在用浏览器回调里的 code 换取账号');
+  const tok = await ms.exchangeCode(code);
+  return await ms.finishWithToken(tok.access_token);
+});
+
 /* ---------------- 其它 ---------------- */
 ipcMain.handle('dialog:openFolder', async () => {
   const res = await dialog.showOpenDialog(win, { properties: ['openDirectory'] });
@@ -1798,6 +1850,7 @@ if (!gotLock) {
 if (gotLock) app.whenReady().then(() => {
   // Java 一键部署的落地根目录：<userData>/runtime
   javaRuntime.init(JAVA_DIR);
+  if (ms.setSkinDir) ms.setSkinDir(path.join(DATA_DIR, 'skins'));
   seedBuiltinSkins();
   createWindow();
   createTray();
