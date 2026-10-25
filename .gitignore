@@ -29,3 +29,7 @@ desktop.ini
 交付文档-DSH.md
 docs-附录-原始prompt.md
 GITHUB-上传说明.md
+
+# 提交用的说明文档（不公开）
+docs/*.pdf
+docs/*.docx

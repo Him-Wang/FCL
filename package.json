@@ -44,6 +44,8 @@
       "!shots/**",
       "!.build-tmp/**",
       "!FMCL/**",
+      "!docs/**",
+      "!*.pdf",
       "!*.log",
       "!*.md",
       "!*.docx",
