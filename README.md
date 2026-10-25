@@ -8,13 +8,13 @@
 > 变更细节见 [Releases · v1.1.0](../../releases/tag/v1.1.0)。
 
 **FCL**（Fish + MineCraft + Launcher，曾用名 FMCL / 肥鱼启动器）是 Windows 上的 Minecraft 桌面启动器，PCL 风格界面，Electron 构建。
-集成版本与加载器安装、模组与材质包光影、离线皮肤、Java 一键部署，全程中文镜像加速，支持 3 套主题与自定义背景。
+集成版本与加载器安装、模组与材质包光影、离线皮肤、Java 一键部署，全程中文镜像加速，支持浅色 / 深色 / 跟随系统与自定义背景。
 
 <p>
   <img alt="platform" src="https://img.shields.io/badge/platform-Windows%20x64-2b7bf0">
-  <img alt="electron" src="https://img.shields.io/badge/Electron-33-47848f">
+  <img alt="electron" src="https://img.shields.io/badge/Electron-33.4-47848f">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-00c29a">
-  <img alt="version" src="https://img.shields.io/badge/version-1.2.0-4d6bfe">
+  <img alt="version" src="https://img.shields.io/badge/version-1.3.0-4d6bfe">
 </p>
 
 ![FCL 启动页](docs/screenshots/launch.jpg)
@@ -53,14 +53,14 @@
 
 ### 界面
 
-- **3 套主题 × 3 种明暗**：DeepSeek 经典（品牌蓝）/ WorkBuddy 经典（品牌绿）/ 默认主题，浅色、深色、跟随系统
+- **外观只有一个入口**：右下角圆形按钮循环「浅色 → 深色 → 跟随系统」，不再有主题色板
+
+- **浅色 / 深色 / 跟随系统**：右下角圆形悬浮按钮切换，图标随状态在太阳 / 月亮 / 自动之间变化，点一次循环切换
 - **自定义背景图 + 磨砂玻璃**：卡片、侧栏、壁纸整体做 backdrop-filter 模糊，Windows 11 上再叠加系统级 Acrylic；背景不透明度 30%–100% 实时生效
-- **托盘常驻**：点 × 最小化到托盘，托盘菜单可显示窗口或退出；
-- **首次关闭会询问**：第一次点 × 弹出「最小化到托盘 / 直接退出」，可勾选记住选择（之后可在设置里改）
-- **整窗圆角**：窗口、磨砂背景层、卡片、按钮统一圆角，四角真正透出桌面
+- **托盘常驻**：点 × 最小化到托盘，托盘菜单可显示窗口或退出；可在设置里改回点 × 直接退出
 - ColorOS 风格的大圆角、柔和投影、胶囊控件
 
-> 截图使用「默认主题」；设置里可切换 DeepSeek 经典 / WorkBuddy 经典两套预设，配浅色、深色、跟随系统。
+> 截图使用浅色；明暗用右下角的圆形悬浮按钮切换，没有其他主题入口。
 
 | | |
 | --- | --- |
@@ -140,7 +140,9 @@ preload.js           暴露给渲染进程的受限 API
 index.html           单页结构 + SVG 图标精灵
 js/app.js            渲染进程：页面状态、交互、皮肤/模组/设置等全部 UI 逻辑
 js/data.js           内置静态数据（新闻兜底等）
-css/style.css        设计令牌 + 组件样式 + 主题/明暗 + ColorOS 风格层
+css/tokens.css       设计变量层：颜色 / 字号 / 间距 / 圆角 / 层次，浅色与深色只在这里换值
+css/app.css          组件与布局：只引用变量，不写外观选择器、不写颜色字面量
+design.md            设计系统契约（界面呈现规则、可用基元、反模式）
 lib/installer.js     版本安装、镜像探测、资源校验
 lib/java.js          Java 探测与一键部署
 lib/modstore.js      Modrinth 搜索与安装
@@ -160,7 +162,7 @@ tools/               图标生成、皮肤生成、CSL 拉取、打包脚本
 
 ## 稳定性
 
-- **单实例**：重复双击只会把已有窗口拉到前台并提示「FCL 已在运行」，不会出现两个进程抢同一个数据目录
+- **单实例**：重复双击只会把已有窗口拉到前台，不会出现两个进程抢同一个数据目录
 - **崩溃留痕**：主进程异常、渲染进程 / GPU 子进程意外退出、窗口意外关闭，全部写进 `FCL\logs\app.log`
 - **下载韧性**：连接 10s / 空闲 20s 超时、镜像回退、原子 `.part` 写入、SHA-1 校验；遇到杀软占用（EPERM / EBUSY）自动退避重试
 - **安装校验**：Java / 版本文件下载并解压后会校验关键文件是否存在，缺文件自动清理重试
@@ -206,6 +208,7 @@ exe 未做代码签名，属于常见误报。可以下载后自行校验 SHA256
 - [BMCLAPI](https://bmclapidoc.bangbang93.com) · 阿里云 / 腾讯云 maven 镜像
 - [Adoptium](https://adoptium.net) · 清华 TUNA · 华为云 OpenJDK 镜像
 - [CustomSkinLoader](https://github.com/xfl03/MCLoader)（内置构建，MIT）
+- **特别感谢 [@ImAlexBlock](https://github.com/ImAlexBlock)**：他在 [PR #1](https://github.com/Him-Wang/FCL/pull/1) 里把样式重构成 `tokens.css` + `app.css` 两层、修掉深色模式悬停底色与 JS 强调色失效两个真 bug、把品牌色对比度提到 4.5:1、重做了无障碍（h1/h2、aria、focus 可见、switch 语义），还写下 `design.md` 设计系统说明 —— 1.3.0 的界面基本建立在这次重构之上。
 
 ## 作者
 
@@ -214,6 +217,7 @@ exe 未做代码签名，属于常见误报。可以下载后自行校验 SHA256
 | 作者 | **Hermintway** | 项目发起人 · 需求与验收 |
 | 共同创造 | **DeepSeek Harness（DSH）** | 架构与代码实现：安装与下载链路、镜像策略、Java 一键部署、下载队列、模组与中文搜索、材质包与光影、皮肤系统、界面与打包发布 |
 | 共同创造 | **WorkBuddy** | 初版界面原型：PCL 风格布局、三套主题配色、像素头像与鱼形图标，以及早期 xmcl 接入与交付文档 |
+| 界面重构 | **AlexBlock（[@ImAlexBlock](https://github.com/ImAlexBlock)）** | 设计变量与组件样式分层、深色模式与对比度修复、无障碍改造、`design.md` |
 
 ## License
 

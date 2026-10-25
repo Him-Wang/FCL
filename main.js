@@ -302,7 +302,7 @@ win.on('closed', () => {
             logs: document.querySelectorAll('.log-line').length,
             mods: document.querySelectorAll('#modList .row-item').length,
             fish: document.querySelectorAll('use[href="#i-fish"]').length,
-            presets: document.querySelectorAll('[data-act="preset"]').length,
+            fab: document.querySelectorAll('#themeFab').length,
             storeRows: document.querySelectorAll('#storeList .row-item').length,
             onlineMods: document.querySelectorAll('#modOnlineList .row-item').length,
             queueRows: document.querySelectorAll('#queueList .q-row').length,
@@ -312,24 +312,25 @@ win.on('closed', () => {
           console.log('[smoke] dom ' + JSON.stringify(r));
           const r2 = await win.webContents.executeJavaScript(`(() => {
             const out = {};
-            const g = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+            const g = (n) => getComputedStyle(document.body).getPropertyValue(n).trim();
             const cs = () => getComputedStyle(document.body);
-            const click = (sel) => { const b = document.querySelector(sel); if (b) b.click(); };
-            const probe = (k) => { out[k] = document.body.className + ' | ' + g('--primary') + ' | bg ' + cs().backgroundColor; };
-            ['workbuddy', 'classic', 'default'].forEach((t) => {
-              click('[data-act="preset"][data-id="' + t + '"]');
-              click('[data-act="mode"][data-id="light"]');
-              probe(t + '-light');
-              click('[data-act="mode"][data-id="dark"]');
-              probe(t + '-dark');
-            });
-            click('[data-act="mode"][data-id="system"]');
-            out.sysMode = document.querySelector('[data-act="mode"].active').dataset.id + ' | ' +
+            const setMode = (m) => {
+              const fab = document.querySelector('#themeFab');
+              let guard = 0;
+              while (fab.dataset.mode !== m && guard++ < 4) fab.click();
+            };
+            const probe = (k) => { out[k] = document.body.className + ' | ' + g('--accent-fill') + ' | bg ' + cs().backgroundColor; };
+            setMode('light');
+            probe('light');
+            setMode('dark');
+            probe('dark');
+            setMode('system');
+            out.sysMode = document.querySelector('#themeFab').dataset.mode + ' | ' +
               document.body.className + ' | sys=' + window.matchMedia('(prefers-color-scheme: dark)').matches;
-            out.modeBtns = document.querySelectorAll('[data-act="mode"]').length;
+            out.fab = document.querySelectorAll('#themeFab').length;
+            setMode('light');
             return out;
           })()`);
-          console.log('[smoke] preset ' + JSON.stringify(r2));
           if (process.env.CL_SHOT) {
             win.setSize(1020, 700);
             win.show();
@@ -343,14 +344,14 @@ win.on('closed', () => {
             };
             try { require('fs').mkdirSync(path.join(__dirname, 'shots'), { recursive: true }); } catch (e) {}
             const clickMode = async (m) => win.webContents.executeJavaScript(
-              `document.querySelector('[data-act="mode"][data-id="${m}"]').click()`);
-            await shot('workbuddy-light', '[data-act="preset"][data-id="workbuddy"]');
+              `document.querySelector('#themeFab').click()`);
+            await shot('ui-light', '#themeFab');
             await clickMode('dark');
             await shot('workbuddy-dark', null);
-            await shot('classic-dark', '[data-act="preset"][data-id="classic"]');
+            await shot('ui-dark', '#themeFab');
             await clickMode('light');
             await shot('classic-light', null);
-            await shot('default-light', '[data-act="preset"][data-id="default"]');
+            await shot('ui-system', '#themeFab');
             await clickMode('dark');
             await shot('default-dark', null);
             await clickMode('light');
@@ -415,8 +416,8 @@ win.on('closed', () => {
           const label = { launch: '启动游戏', versions: '版本管理', store: '材质包', mods: '模组管理', accounts: '账号管理', settings: '设置' };
           await run(`(() => { const s = document.createElement('style'); s.textContent = '.toast{display:none!important}'; document.head.appendChild(s); })()`);
           // 统一成「默认主题 + 浅色」，这样每张截图配色一致
-          await run(`document.querySelector('[data-act="preset"][data-id="default"]').click()`);
-          await run(`document.querySelector('[data-act="mode"][data-id="light"]').click()`);
+          await run(`document.querySelector('#themeFab').click()`);
+          await run(`document.querySelector('#themeFab').click()`);
           await new Promise((r) => setTimeout(r, 900));
           for (const page of list) {
             await run(`(() => { const items = Array.from(document.querySelectorAll('.nav-item')); const b = items.find((x) => x.textContent.includes(${JSON.stringify(label[page] || page)})); if (b) b.click(); return !!b; })()`);
@@ -434,12 +435,13 @@ win.on('closed', () => {
         if (process.env.CL_SHOT_CLEAN) {
           const go = async (page, name) => {
             await run(`document.querySelector('[data-page="${page}"]').click()`);
+            await run(`document.querySelector('.content').scrollTop = 0`);
             await new Promise((r) => setTimeout(r, 1100));
             await cap(name);
           };
           await run(`(() => { const s = document.createElement('style'); s.textContent = '.toast{display:none!important}'; document.head.appendChild(s); })()`);
-          await run(`document.querySelector('[data-act="preset"][data-id="default"]') && document.querySelector('[data-act="preset"][data-id="default"]').click()`);
-          await run(`document.querySelector('[data-act="mode"][data-id="light"]') && document.querySelector('[data-act="mode"][data-id="light"]').click()`);
+          await run(`document.querySelector('[data-act="preset"][data-id="default"]') && document.querySelector('#themeFab').click()`);
+          await run(`document.querySelector('[data-act="mode"][data-id="light"]') && document.querySelector('#themeFab').click()`);
           await new Promise((r) => setTimeout(r, 900));
           try { win.setAlwaysOnTop(true, 'screen-saver'); win.focus(); win.moveTop(); } catch (e) {}
           await new Promise((r) => setTimeout(r, 600));
@@ -454,15 +456,15 @@ win.on('closed', () => {
           await run(`document.querySelector('.content').scrollTop = 99999`);
           await new Promise((r) => setTimeout(r, 800));
           await cap('clean-7-settings-bottom');
-          await run(`document.querySelector('[data-act="mode"][data-id="dark"]').click()`);
+          await run(`document.querySelector('#themeFab').click()`);
           await new Promise((r) => setTimeout(r, 1200));
           await go('launch', 'clean-8-launch-dark');
-          await run(`document.querySelector('[data-act="mode"][data-id="light"]').click()`);
+          await run(`document.querySelector('#themeFab').click()`);
           await new Promise((r) => setTimeout(r, 900));
-          await run(`document.querySelector('[data-act="preset"][data-id="classic"]').click()`);
+          await run(`document.querySelector('#themeFab').click()`);
           await new Promise((r) => setTimeout(r, 1000));
           await go('launch', 'clean-9-theme-classic');
-          await run(`document.querySelector('[data-act="preset"][data-id="workbuddy"]').click()`);
+          await run(`document.querySelector('#themeFab').click()`);
           await new Promise((r) => setTimeout(r, 1000));
           await go('launch', 'clean-10-theme-workbuddy');
           console.log('[ui-shot] clean done');
@@ -491,8 +493,8 @@ win.on('closed', () => {
         await run(`document.querySelector('#modalClose').click(); document.querySelector('#launchBtn').click()`);
         await cap('ui-7-launching');
         // 最后恢复成默认主题 + 浅色，补一张浅色首屏
-        await run(`document.querySelector('[data-act="preset"][data-id=""]') && document.querySelector('[data-act="preset"][data-id=""]').click()`);
-        await run(`document.querySelector('[data-act="mode"][data-id="light"]') && document.querySelector('[data-act="mode"][data-id="light"]').click()`);
+        await run(`document.querySelector('[data-act="preset"][data-id=""]') && document.querySelector('#themeFab').click()`);
+        await run(`document.querySelector('[data-act="mode"][data-id="light"]') && document.querySelector('#themeFab').click()`);
         await new Promise((r) => setTimeout(r, 600));
         await cap('ui-9-light');
         console.log('[ui-shot] done');

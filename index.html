@@ -4,7 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>FCL</title>
-<link rel="stylesheet" href="css/style.css" />
+<link rel="stylesheet" href="css/tokens.css" />
+<link rel="stylesheet" href="css/app.css" />
 </head>
 <body>
 
@@ -14,6 +15,9 @@
   <symbol id="i-puzzle" viewBox="0 0 24 24"><path d="M4 4h7v3a2 2 0 104 0V4h5v6h-3a2 2 0 100 4h3v6h-6v-3a2 2 0 10-4 0v3H4v-7h3a2 2 0 100-4H4z"/></symbol>
   <symbol id="i-user" viewBox="0 0 24 24"><path d="M12 12a4 4 0 100-8 4 4 0 000 8zM4 21c0-4 3.6-6 8-6s8 2 8 6"/></symbol>
   <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h10m4 0h2M4 17h4m4 0h8M15 4v6M9 14v6"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 13.4A8.5 8.5 0 1110.6 3a6.8 6.8 0 1010.4 10.4z"/></symbol>
+  <symbol id="i-auto" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 000-17z" fill="currentColor" stroke="none"/></symbol>
   <symbol id="i-info" viewBox="0 0 24 24"><path d="M12 21a9 9 0 100-18 9 9 0 000 18zM12 11v5m0-8h.01"/></symbol>
   <symbol id="i-search" viewBox="0 0 24 24"><path d="M11 18a7 7 0 100-14 7 7 0 000 14zm5-2l5 5"/></symbol>
   <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3m-8 0l1 13h8l1-13"/></symbol>
@@ -34,15 +38,15 @@
   <!-- 自定义标题栏 -->
   <header class="titlebar">
     <div class="tb-left">
-      <svg class="ic" style="width:16px;height:16px"><use href="#i-fish"/></svg>
-      <span class="tb-title">FCL</span>
+      <svg class="ic" style="width:16px;height:16px" aria-hidden="true"><use href="#i-fish"/></svg>
+      <h1 class="tb-title">FCL</h1>
       <span class="tb-sub">FishCraftLauncher v1.0.4</span>
     </div>
     <div class="tb-right">
-      <button class="tb-btn" data-act="min" title="最小化"><i class="tb-ico min"></i></button>
-      <button class="tb-btn" data-act="max" title="最大化"><i class="tb-ico max"></i></button>
-      <button class="tb-btn danger" data-act="close" title="关闭"><i class="tb-ico close"></i>
-        <svg class="tb-ico" viewBox="0 0 10 10" style="width:10px;height:10px"><path d="M0 0l10 10M10 0L0 10" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>
+      <button class="tb-btn" type="button" data-act="min" aria-label="最小化" title="最小化"><i class="tb-ico min" aria-hidden="true"></i></button>
+      <button class="tb-btn" type="button" data-act="max" aria-label="最大化" title="最大化"><i class="tb-ico max" aria-hidden="true"></i></button>
+      <button class="tb-btn danger" type="button" data-act="close" aria-label="关闭" title="关闭">
+        <svg class="tb-ico" viewBox="0 0 10 10" style="width:10px;height:10px" aria-hidden="true"><path d="M0 0l10 10M10 0L0 10" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>
       </button>
     </div>
   </header>
@@ -52,20 +56,20 @@
     <aside class="sidebar">
       <div class="brand">
         <div class="brand-logo">
-          <svg class="ic" style="width:20px;height:20px"><use href="#i-fish"/></svg>
+          <svg class="ic" aria-hidden="true"><use href="#i-fish"/></svg>
         </div>
         <div class="brand-text">
-          <b>FCL</b>
+          <span class="brand-name">FCL</span>
           <span id="brandEnv">检测环境…</span>
         </div>
       </div>
-      <nav class="nav">
-        <button class="nav-item active" data-page="launch"><svg class="ic"><use href="#i-play"/></svg><span>启动游戏</span></button>
-        <button class="nav-item" data-page="versions"><svg class="ic"><use href="#i-download"/></svg><span>版本管理</span></button>
-        <button class="nav-item" data-page="store"><svg class="ic"><use href="#i-store"/></svg><span>材质包·光影</span></button>
-        <button class="nav-item" data-page="mods"><svg class="ic"><use href="#i-puzzle"/></svg><span>模组管理</span></button>
-        <button class="nav-item" data-page="accounts"><svg class="ic"><use href="#i-user"/></svg><span>账号管理</span></button>
-        <button class="nav-item" data-page="settings"><svg class="ic"><use href="#i-sliders"/></svg><span>设置</span></button>
+      <nav class="nav" aria-label="主导航">
+        <button class="nav-item active" type="button" data-page="launch" aria-current="page"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg><span>启动游戏</span></button>
+        <button class="nav-item" type="button" data-page="versions"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg><span>版本管理</span></button>
+        <button class="nav-item" type="button" data-page="store"><svg class="ic" aria-hidden="true"><use href="#i-store"/></svg><span>材质包·光影</span></button>
+        <button class="nav-item" type="button" data-page="mods"><svg class="ic" aria-hidden="true"><use href="#i-puzzle"/></svg><span>模组管理</span></button>
+        <button class="nav-item" type="button" data-page="accounts"><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg><span>账号管理</span></button>
+        <button class="nav-item" type="button" data-page="settings"><svg class="ic" aria-hidden="true"><use href="#i-sliders"/></svg><span>设置</span></button>
       </nav>
       <div class="side-foot">
         <div class="sf-row"><span>当前版本</span><b id="sideVer">-</b></div>
@@ -77,55 +81,67 @@
     <main class="content">
 
       <!-- 启动 -->
-      <section class="page active" id="page-launch">
-        <div class="hero">
-          <button class="hcard" id="verCard" data-act="pick-version">
-            <span class="hcard-label">游戏版本</span>
-            <span class="hcard-value" id="verName">1.20.4</span>
-            <span class="hcard-sub" id="verSub">正式版 · 点击切换</span>
-          </button>
-          <button class="hcard" id="accCard" data-act="pick-account">
-            <span class="hcard-label">游戏账号</span>
-            <span class="hcard-value acc-line"><img id="accAvatar" class="avatar" alt=""><span id="accName">未登录</span></span>
-            <span class="hcard-sub" id="accSub">离线模式 · 点击切换</span>
-          </button>
+      <section class="page active" id="page-launch" aria-labelledby="h-launch">
+        <div class="page-head">
+          <h2 class="page-title" id="h-launch">启动游戏</h2>
         </div>
+        <div class="launch-grid">
+          <div class="launch-main">
+            <div class="hero">
+              <button class="hcard" type="button" id="verCard" data-act="pick-version">
+                <span class="hcard-label">游戏版本</span>
+                <span class="hcard-value" id="verName">1.20.4</span>
+                <span class="hcard-sub" id="verSub">正式版 · 点击切换</span>
+              </button>
+              <button class="hcard" type="button" id="accCard" data-act="pick-account">
+                <span class="hcard-label">游戏账号</span>
+                <span class="hcard-value acc-line"><img id="accAvatar" class="avatar" alt="" aria-hidden="true"><span id="accName">未登录</span></span>
+                <span class="hcard-sub" id="accSub">离线模式 · 点击切换</span>
+              </button>
+            </div>
 
-        <button class="launch-btn" id="launchBtn">
-          <svg class="ic"><use href="#i-play"/></svg>
-          <span id="launchText">启动游戏</span>
-        </button>
-        <div class="progress" id="progress"><div class="progress-bar" id="progressBar"></div></div>
+            <button class="launch-btn" type="button" id="launchBtn">
+              <svg class="ic" aria-hidden="true"><use href="#i-play"/></svg>
+              <span id="launchText">启动游戏</span>
+            </button>
+            <div class="progress" id="progress" role="progressbar" aria-label="启动进度"><div class="progress-bar" id="progressBar"></div></div>
 
-        <div class="env-bar" id="envBar"></div>
+            <div class="env-bar" id="envBar"></div>
 
-        <div class="panel log-panel">
-          <div class="panel-head">
-            <span>启动日志</span>
-            <button class="link-btn" id="clearLog">清空</button>
+            <div class="panel log-panel">
+              <div class="panel-head">
+                <span class="panel-title">启动日志</span>
+                <button class="link-btn" type="button" id="clearLog">清空</button>
+              </div>
+              <div class="log" id="log" role="log" aria-live="polite" aria-label="启动日志"><div class="log-empty">尚未启动游戏。</div></div>
+            </div>
           </div>
-          <div class="log" id="log"><div class="log-empty">尚未启动游戏。</div></div>
-        </div>
-
-        <div class="panel news-panel">
-          <div class="panel-head"><span>最新动态</span></div>
-          <ul class="news" id="news"></ul>
+          <aside class="launch-side">
+            <div class="panel news-panel">
+              <div class="panel-head"><span class="panel-title">最新动态</span></div>
+              <ul class="news" id="news"></ul>
+            </div>
+          </aside>
         </div>
       </section>
 
       <!-- 版本管理 -->
-      <section class="page" id="page-versions">
+      <section class="page" id="page-versions" aria-labelledby="h-versions">
+        <div class="page-head">
+          <h2 class="page-title" id="h-versions">版本管理</h2>
+          <p class="page-sub">安装官方版本与 Fabric / Forge 加载器，查看下载队列</p>
+        </div>
         <div class="toolbar">
           <div class="tabs" id="verTabs"></div>
           <div class="search">
-            <svg class="ic"><use href="#i-search"/></svg>
-            <input id="verSearch" placeholder="搜索版本…" />
+            <svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>
+            <input id="verSearch" type="text" placeholder="搜索版本…" />
           </div>
         </div>
         <div class="panel queue-panel hidden" id="queuePanel">
           <div class="panel-head">
             <span>下载队列 <b id="queueStat" class="muted"></b></span>
-            <button class="link-btn" data-act="queue-clear">清理已完成</button>
+            <button type="button" class="link-btn" data-act="queue-clear">清理已完成</button>
           </div>
           <div class="queue-list" id="queueList"></div>
         </div>
@@ -137,25 +153,29 @@
       </section>
 
       <!-- 下载中心 -->
-      <section class="page" id="page-store">
+      <section class="page" id="page-store" aria-labelledby="h-store">
+        <div class="page-head">
+          <h2 class="page-title" id="h-store">材质包·光影</h2>
+          <p class="page-sub">管理已安装资源，从 Modrinth 一键部署</p>
+        </div>
         <div class="toolbar">
           <div class="tabs" id="storeTabs">
-            <button class="tab active" data-act="store-tab" data-id="mod">模组</button>
-            <button class="tab" data-act="store-tab" data-id="resourcepack">材质包</button>
-            <button class="tab" data-act="store-tab" data-id="shader">光影</button>
+            <button type="button" class="tab active" data-act="store-tab" data-id="mod">模组</button>
+            <button type="button" class="tab" data-act="store-tab" data-id="resourcepack">材质包</button>
+            <button type="button" class="tab" data-act="store-tab" data-id="shader">光影</button>
           </div>
           <div class="search">
-            <svg class="ic"><use href="#i-search"/></svg>
-            <input id="storeSearch" placeholder="搜索名称，留空显示热门" />
+            <svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>
+            <input id="storeSearch" type="text" placeholder="搜索名称，留空显示热门" />
           </div>
         </div>
         <div class="panel hidden" id="packPanel">
           <div class="panel-head">
             <span id="packTitle">已安装</span>
             <span class="row">
-              <button class="btn sm primary" data-act="import-pack" id="packImportBtn">导入本地文件</button>
-              <button class="link-btn" data-act="install-iris" id="irisBtn">安装 Iris（光影前置）</button>
-              <button class="link-btn" data-act="open-packs">打开文件夹</button>
+              <button type="button" class="btn sm primary" data-act="import-pack" id="packImportBtn">导入本地文件</button>
+              <button type="button" class="link-btn" data-act="install-iris" id="irisBtn">安装 Iris（光影前置）</button>
+              <button type="button" class="link-btn" data-act="open-packs">打开文件夹</button>
             </span>
           </div>
           <div class="list" id="packList"></div>
@@ -171,7 +191,7 @@
               <option value="forge">Forge</option>
             </select>
           </label>
-          <button class="btn primary" data-act="store-search"><svg class="ic"><use href="#i-search"/></svg>搜索</button>
+          <button type="button" class="btn primary" data-act="store-search"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>搜索</button>
         </div>
         <div class="panel">
           <div class="list" id="storeList"></div>
@@ -180,16 +200,20 @@
       </section>
 
       <!-- 模组管理 -->
-      <section class="page" id="page-mods">
+      <section class="page" id="page-mods" aria-labelledby="h-mods">
+        <div class="page-head">
+          <h2 class="page-title" id="h-mods">模组管理</h2>
+          <p class="page-sub">本机模组的启用与删除，或从 Modrinth / MC百科 在线获取</p>
+        </div>
         <div class="toolbar">
           <div class="tool-btns">
-            <button class="btn primary" data-act="import-mod"><svg class="ic"><use href="#i-plus"/></svg>导入模组</button>
-            <button class="btn ghost" data-act="browse-mods"><svg class="ic"><use href="#i-folder"/></svg>打开模组文件夹</button>
-            <button class="btn ghost" data-act="refresh-mods"><svg class="ic"><use href="#i-refresh"/></svg>刷新</button>
+            <button type="button" class="btn primary" data-act="import-mod"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>导入模组</button>
+            <button type="button" class="btn ghost" data-act="browse-mods"><svg class="ic" aria-hidden="true"><use href="#i-folder"/></svg>打开模组文件夹</button>
+            <button type="button" class="btn ghost" data-act="refresh-mods"><svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg>刷新</button>
           </div>
           <div class="search">
-            <svg class="ic"><use href="#i-search"/></svg>
-            <input id="modSearch" placeholder="搜索模组…" />
+            <svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>
+            <input id="modSearch" type="text" placeholder="搜索模组…" />
           </div>
         </div>
         <div class="panel">
@@ -201,14 +225,14 @@
           <div class="panel-head">
             <span>在线模组 <b class="muted" id="modOnlineHint"></b></span>
             <div class="tabs small" id="modSourceTabs">
-              <button class="tab active" data-act="mod-source" data-id="modrinth">Modrinth</button>
-              <button class="tab" data-act="mod-source" data-id="mcmod">MC百科（中文）</button>
+              <button type="button" class="tab active" data-act="mod-source" data-id="modrinth">Modrinth</button>
+              <button type="button" class="tab" data-act="mod-source" data-id="mcmod">MC百科（中文）</button>
             </div>
           </div>
           <div class="toolbar inner">
             <div class="search">
-              <svg class="ic"><use href="#i-search"/></svg>
-              <input id="modOnlineSearch" placeholder="搜索模组，留空显示热门" />
+              <svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>
+              <input id="modOnlineSearch" type="text" placeholder="搜索模组，留空显示热门" />
             </div>
             <label class="mini only-modrinth">MC 版本 <select id="modOnlineMc"></select></label>
             <label class="mini only-modrinth">加载器
@@ -226,27 +250,31 @@
       </section>
 
       <!-- 账号管理 -->
-      <section class="page" id="page-accounts">
+      <section class="page" id="page-accounts" aria-labelledby="h-accounts">
+        <div class="page-head">
+          <h2 class="page-title" id="h-accounts">账号管理</h2>
+          <p class="page-sub">离线或微软账号，以及每个账号的皮肤</p>
+        </div>
         <div class="two-col">
           <div class="panel">
-            <div class="panel-head"><span>账号列表</span><span class="muted" id="accCount"></span></div>
+            <div class="panel-head"><span class="panel-title">账号列表</span><span class="muted" id="accCount"></span></div>
             <div class="list" id="accList"></div>
           </div>
           <div class="panel">
-            <div class="panel-head"><span>添加账号</span></div>
+            <div class="panel-head"><span class="panel-title">添加账号</span></div>
             <div class="tabs small" id="loginTabs">
-              <button class="tab active" data-login="offline">离线登录</button>
-              <button class="tab" data-login="microsoft">微软登录</button>
+              <button type="button" class="tab active" data-login="offline">离线登录</button>
+              <button type="button" class="tab" data-login="microsoft">微软登录</button>
             </div>
             <div class="form" id="loginOffline">
               <label>玩家名称</label>
-              <input id="offlineName" placeholder="3-16 位字母、数字或下划线" />
+              <input id="offlineName" type="text" placeholder="3-16 位字母、数字或下划线" />
               <p class="tip">离线账号可直接使用，无需验证。</p>
-              <button class="btn primary" data-act="login-offline"><svg class="ic"><use href="#i-plus"/></svg>添加离线账号</button>
+              <button type="button" class="btn primary" data-act="login-offline"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>添加离线账号</button>
             </div>
             <div class="form hidden" id="loginMs">
               <p class="tip">点击后会在浏览器中完成微软账号授权，授权成功自动写入账号列表。</p>
-              <button class="btn primary" data-act="login-ms">使用微软账号登录</button>
+              <button type="button" class="btn primary" data-act="login-ms">使用微软账号登录</button>
               <div class="ms-code hidden" id="msCode">
                 <p>请在浏览器中打开：<b id="msVerify">https://www.microsoft.com/link</b></p>
                 <p>并输入代码：<b id="msCodeText">ABCD1234</b></p>
@@ -261,10 +289,10 @@
           <div class="panel-head">
             <span>皮肤 <b class="muted" id="skinWho"></b></span>
             <span class="row">
-              <button class="btn sm primary" data-act="pick-skin">更换皮肤</button>
-              <button class="btn sm ghost" data-act="reset-skin">恢复默认</button>
-              <button class="btn sm" data-act="enable-local-skin" id="localSkinBtn">在游戏内生效</button>
-              <button class="btn sm ghost hidden" data-act="upload-skin" id="skinUploadBtn">上传到微软</button>
+              <button type="button" class="btn sm primary" data-act="pick-skin">更换皮肤</button>
+              <button type="button" class="btn sm ghost" data-act="reset-skin">恢复默认</button>
+              <button type="button" class="btn sm" data-act="enable-local-skin" id="localSkinBtn">在游戏内生效</button>
+              <button type="button" class="btn sm ghost hidden" data-act="upload-skin" id="skinUploadBtn">上传到微软</button>
             </span>
           </div>
           <div class="skin-wrap">
@@ -276,8 +304,8 @@
               <div class="skin-block">
                 <div class="skin-label">皮肤模型</div>
                 <div class="skin-seg">
-                  <button class="skin-seg-btn" data-act="skin-variant" data-id="classic">经典 · 4px 手臂</button>
-                  <button class="skin-seg-btn" data-act="skin-variant" data-id="slim">纤细 · 3px 手臂</button>
+                  <button type="button" class="skin-seg-btn" data-act="skin-variant" data-id="classic">经典 · 4px 手臂</button>
+                  <button type="button" class="skin-seg-btn" data-act="skin-variant" data-id="slim">纤细 · 3px 手臂</button>
                 </div>
               </div>
               <div class="skin-block">
@@ -295,34 +323,38 @@
       </section>
 
       <!-- 设置 -->
-      <section class="page" id="page-settings">
+      <section class="page" id="page-settings" aria-labelledby="h-settings">
+        <div class="page-head">
+          <h2 class="page-title" id="h-settings">设置</h2>
+          <p class="page-sub">启动参数、Java 运行时与界面外观</p>
+        </div>
         <div class="panel">
-          <div class="panel-head"><span>启动设置</span></div>
+          <div class="panel-head"><span class="panel-title">启动设置</span></div>
           <div class="form grid">
             <div class="field wide">
-              <label>内存分配 <b id="memText">4096 MB</b></label>
+              <label for="memRange">内存分配 <b id="memText">4096 MB</b></label>
               <input type="range" id="memRange" min="1024" max="16384" step="512" />
             </div>
             <div class="field">
               <label>Java 路径</label>
               <div class="row">
-                <input id="javaPath" placeholder="留空则自动检测" />
-                <button class="btn ghost" data-act="pick-java">浏览</button>
+                <input id="javaPath" type="text" placeholder="留空则自动检测" />
+                <button type="button" class="btn ghost" data-act="pick-java">浏览</button>
               </div>
             </div>
             <div class="field">
               <label>游戏目录</label>
               <div class="row">
-                <input id="gameDir" placeholder=".minecraft 目录" />
-                <button class="btn ghost" data-act="pick-dir">浏览</button>
+                <input id="gameDir" type="text" placeholder=".minecraft 目录" />
+                <button type="button" class="btn ghost" data-act="pick-dir">浏览</button>
               </div>
             </div>
             <div class="field wide">
               <label>启动器根目录 <span class="muted">（FCL 文件夹：设置 / 游戏 / Java 都在这里）</span></label>
               <div class="row">
                 <input id="appRoot" readonly placeholder="与 exe 同级的 FCL 文件夹" />
-                <button class="btn ghost" data-act="open-root">打开</button>
-                <button class="btn ghost" data-act="pick-root">更改</button>
+                <button type="button" class="btn ghost" data-act="open-root">打开</button>
+                <button type="button" class="btn ghost" data-act="pick-root">更改</button>
               </div>
               <p class="tip">默认在 exe 旁边的 <code>FCL\</code>：<code>data\</code> 设置与账号、<code>game\</code> 游戏目录、<code>java\</code> 运行时。改到别的盘后需要重启启动器生效，原有数据会留在旧目录（可手动搬）。</p>
             </div>
@@ -335,64 +367,45 @@
             <div class="field wide">
               <label>Java 运行环境 <span class="muted" id="javaState">检测中…</span></label>
               <div class="row wrap">
-                <button class="btn primary" data-act="deploy-java"><svg class="ic"><use href="#i-download"/></svg>一键部署 Java</button>
-                <button class="btn ghost" data-act="refresh-java">重新检测</button>
+                <button type="button" class="btn primary" data-act="deploy-java"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg>一键部署 Java</button>
+                <button type="button" class="btn ghost" data-act="refresh-java">重新检测</button>
               </div>
               <p class="tip">未安装 Java 时点「启动游戏」会自动部署（MC 26.x 需要 Java 25，1.20+ 用 Java 21）。</p>
             </div>
             <div class="field wide">
-              <label>JVM 参数</label><input id="jvmArgs" placeholder="-XX:+UseG1GC -Dsun.rmi..." />
+              <label>JVM 参数</label><input id="jvmArgs" type="text" placeholder="-XX:+UseG1GC -Dsun.rmi..." />
             </div>
             <div class="field wide">
               <label>微软登录 Client ID <span class="muted">（Azure 应用，免费申请；不填则无法使用微软登录）</span></label>
-              <input id="clientId" placeholder="00000000-0000-0000-0000-000000000000" />
+              <input id="clientId" type="text" placeholder="00000000-0000-0000-0000-000000000000" />
             </div>
           </div>
         </div>
 
         <div class="panel">
-          <div class="panel-head"><span>偏好</span></div>
+          <div class="panel-head"><span class="panel-title">偏好</span></div>
           <div class="form grid">
-            <div class="field">
-              <label>主题色</label>
-              <div class="swatches" id="swatches"></div>
-            </div>
             <div class="field wide">
-              <label>主题预设</label>
               <div class="row wrap">
-                <button class="btn ghost" data-act="preset" data-id="classic">DeepSeek 经典主题</button>
-                <button class="btn ghost" data-act="preset" data-id="workbuddy">WorkBuddy 经典主题</button>
-                <button class="btn ghost" data-act="preset" data-id="default">默认主题</button>
-              </div>
-            </div>
-            <div class="field">
-              <label>明暗（三套主题都支持）</label>
-              <div class="row">
-                <button class="btn ghost" data-act="mode" data-id="light">浅色</button>
-                <button class="btn ghost" data-act="mode" data-id="dark">深色</button>
-                <button class="btn ghost" data-act="mode" data-id="system">跟随系统</button>
                 <label class="check"><input type="checkbox" id="optFullscreen" /> 启动后全屏</label>
-              </div>
-            </div>
-            <div class="field wide">
-              <div class="row wrap">
                 <label class="check"><input type="checkbox" id="optCloseLauncher" /> 游戏启动后关闭启动器</label>
-            <label class="check"><input type="checkbox" id="optTray" /> 点 × 时最小化到托盘（托盘菜单里可退出）</label>
+                <label class="check"><input type="checkbox" id="optTray" /> 点 × 时最小化到托盘（托盘菜单里可退出）</label>
                 <label class="check"><input type="checkbox" id="optCheckAssets" /> 启动前检查资源完整性</label>
                 <label class="check"><input type="checkbox" id="optIsolate" /> 版本隔离</label>
               </div>
+              <p class="tip">明暗（浅色 / 深色 / 跟随系统）用右下角的圆形按钮切换。</p>
             </div>
             <div class="field wide">
               <label>背景图片 <span class="muted">（选自己的壁纸；留空就是纯色背景）</span></label>
               <div class="row">
                 <input id="bgImage" readonly placeholder="未设置，使用主题纯色" />
-                <button class="btn ghost" data-act="pick-bg">选择图片</button>
-                <button class="btn ghost" data-act="clear-bg">清除</button>
+                <button type="button" class="btn ghost" data-act="pick-bg">选择图片</button>
+                <button type="button" class="btn ghost" data-act="clear-bg">清除</button>
               </div>
               <input type="file" id="bgFile" accept="image/png,image/jpeg,image/webp,image/bmp" hidden />
             </div>
             <div class="field wide">
-              <label>背景不透明度 <b id="opacityText">100%</b></label>
+              <label for="opacityRange">背景不透明度 <b id="opacityText">100%</b></label>
               <input type="range" id="opacityRange" min="30" max="100" step="5" />
               <p class="tip">只影响背景：数值越低，卡片、侧栏和壁纸越透，能看到桌面；文字始终不透明。拉到 100% 就是完全不透明（遇到黑屏/花屏时用它兜底）。</p>
             </div>
@@ -400,7 +413,7 @@
         </div>
 
         <div class="panel">
-          <div class="panel-head"><span>关于</span></div>
+          <div class="panel-head"><span class="panel-title">关于</span></div>
           <div class="about">
             <div class="about-logo">
               <svg class="ic" style="width:30px;height:30px"><use href="#i-fish"/></svg>
@@ -438,8 +451,8 @@
               </p>
 
               <div class="row">
-                <button class="btn ghost" data-act="open-gamedir">打开游戏目录</button>
-                <button class="btn ghost" id="resetBtn">重置全部数据</button>
+                <button type="button" class="btn ghost" data-act="open-gamedir">打开游戏目录</button>
+                <button type="button" class="btn ghost" id="resetBtn">重置全部数据</button>
               </div>
             </div>
           </div>
@@ -452,12 +465,17 @@
 
 <div class="toast-wrap" id="toastWrap"></div>
 
+<!-- 外观切换：右下角悬浮圆形按钮，点一次循环 浅色 → 深色 → 跟随系统 -->
+<button type="button" class="theme-fab" id="themeFab" aria-label="切换明暗外观" title="切换明暗外观">
+  <svg class="ic" aria-hidden="true"><use href="#i-sun" id="themeFabIcon"/></svg>
+</button>
+
 <!-- 通用弹窗（版本切换等） -->
 <div class="modal hidden" id="modal">
   <div class="modal-card">
     <div class="modal-head">
       <span id="modalTitle">选择</span>
-      <button class="link-btn" id="modalClose">关闭</button>
+      <button type="button" class="link-btn" id="modalClose">关闭</button>
     </div>
     <div class="modal-body" id="modalBody"></div>
   </div>
