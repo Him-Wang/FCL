@@ -33,6 +33,7 @@ if not defined ELECTRON_BUILDER_BINARIES_MIRROR set "ELECTRON_BUILDER_BINARIES_M
 if /i "%~1"=="debug" set "DEBUG=electron-builder*"
 
 echo ==== build started %DATE% %TIME% ==== > "%ROOT%\build.log"
-"%NODE_EXE%" "node_modules\electron-builder\out\cli\cli.js" %2 %3 %4 %5 %6 >> "%ROOT%\build.log" 2>&1
+"%NODE_EXE%" "node_modules\electron-builder\out\cli\cli.js" %2 %3 %4 %5 %6 --config.electronDist=node_modules/electron/dist >> "%ROOT%\build.log" 2>&1
 echo EXITCODE=%ERRORLEVEL% >> "%ROOT%\build.log"
 endlocal
+

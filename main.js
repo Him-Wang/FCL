@@ -36,6 +36,12 @@ function canWrite(dir) {
 
 /** 便携 exe 真实所在目录（electron-builder portable 会用 PORTABLE_EXECUTABLE_DIR 告诉我们） */
 function portableExeDir() {
+  // macOS 的 .app 在签名后是只读的，不能把数据写进 bundle，统一放到 ~/Library/Application Support
+  if (process.platform === 'darwin') {
+    try {
+      return path.join(app.getPath('appData'), 'FCL-Portable');
+    } catch (e) {}
+  }
   if (process.env.PORTABLE_EXECUTABLE_DIR) return process.env.PORTABLE_EXECUTABLE_DIR;
   try {
     if (app.isPackaged) return path.dirname(app.getPath('exe'));
@@ -43,7 +49,7 @@ function portableExeDir() {
   return __dirname;
 }
 
-const defaultRoot = path.join(portableExeDir(), APP_DIR_NAME);
+const defaultRoot = process.platform === 'darwin' ? portableExeDir() : path.join(portableExeDir(), APP_DIR_NAME);
 const rootPointer = path.join(defaultRoot, 'config.json');
 
 /** 决定根目录：exe 旁默认 → config.json 覆盖 → 不可写就退回 %APPDATA% */
