@@ -2,6 +2,11 @@
 
 > 一个绿色便携的 Minecraft 启动器：双击 exe，一切都在它旁边的 `FCL\` 文件夹里。
 
+> **改名说明**：本仓库地址仍保留 `FMCL`（历史原因，避免旧链接和已发布的下载地址失效），
+> 但项目自 **1.1.0** 起正式改名为 **FishCraftLauncher（FCL）** —— 程序名、窗口标题、数据目录都换成了 FCL。
+> 从旧版升级只需要把新 exe 放到旧 exe 同一个文件夹里运行，第一次启动会自动把 `FMCL\` 迁移成 `FCL\`，账号、版本、皮肤库、Java 都在。
+> 变更细节见 [Releases · v1.1.0](../../releases/tag/v1.1.0)。
+
 **FCL**（Fish + MineCraft + Launcher，曾用名 FMCL / 肥鱼启动器）是 Windows 上的 Minecraft 桌面启动器，PCL 风格界面，Electron 构建。
 集成版本与加载器安装、模组与材质包光影、离线皮肤、Java 一键部署，全程中文镜像加速，支持 3 套主题与自定义背景。
 
@@ -9,7 +14,7 @@
   <img alt="platform" src="https://img.shields.io/badge/platform-Windows%20x64-2b7bf0">
   <img alt="electron" src="https://img.shields.io/badge/Electron-33-47848f">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-00c29a">
-  <img alt="version" src="https://img.shields.io/badge/version-1.0.0-4d6bfe">
+  <img alt="version" src="https://img.shields.io/badge/version-1.1.0-4d6bfe">
 </p>
 
 ![FCL 启动页](docs/screenshots/launch.jpg)
@@ -86,7 +91,7 @@ FCL\
 
 ## 下载
 
-到 [Releases](../../releases) 下载 `FCL-<版本>-x64.exe`，双击运行即可。
+到 [Releases](../../releases) 下载最新的 `FCL-<版本>-x64.exe`（1.1.0 起改了名字，1.0.x 的 `FMCL-*.exe` 是旧命名），双击运行即可。
 
 - 单文件便携版，**无需安装**，首次启动会自解压到 `%TEMP%`（退出后自动清理）
 - 首次启动没有 Java 也能用：点「启动游戏」会自动部署 Java 25（约 56 MB，走清华镜像）
