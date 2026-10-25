@@ -144,38 +144,30 @@ let UI_CFG = {};
 try {
   if (fs.existsSync(rootPointer)) UI_CFG = JSON.parse(fs.readFileSync(rootPointer, 'utf8')) || {};
 } catch (e) {}
+/** 写 FCL\config.json：合并而不是覆盖，避免把 root 等字段冲掉 */
+function patchCfg(patch) {
+  try {
+    fs.mkdirSync(defaultRoot, { recursive: true });
+    let cfg = {};
+    try {
+      cfg = JSON.parse(fs.readFileSync(rootPointer, 'utf8')) || {};
+    } catch (e) {}
+    Object.assign(cfg, patch || {});
+    fs.writeFileSync(rootPointer, JSON.stringify(cfg, null, 2), 'utf8');
+    Object.assign(UI_CFG, cfg);
+    return true;
+  } catch (e) {
+    log('warn', '写配置失败：' + (e.message || e));
+    return false;
+  }
+}
+
 const USE_TRANSPARENT = UI_CFG.transparent !== false; // 默认开启；只有配置文件里显式写 false 才用不透明窗口
 
 /* 设置里切换「窗口背景透明」：写进 config.json，重启后生效 */
 ipcMain.handle('app:set-tray', async (_e, val) => {
-  try {
-    fs.mkdirSync(defaultRoot, { recursive: true });
-    let cfg = {};
-    try {
-      cfg = JSON.parse(fs.readFileSync(rootPointer, 'utf8')) || {};
-    } catch (e) {}
-    cfg.minimizeToTray = !!val;
-    fs.writeFileSync(rootPointer, JSON.stringify(cfg, null, 2), 'utf8');
-    UI_CFG.minimizeToTray = cfg.minimizeToTray;
-    return { ok: true, minimizeToTray: cfg.minimizeToTray };
-  } catch (e) {
-    return { ok: false, error: e.message };
-  }
-});
-
-ipcMain.handle('app:set-transparent', async (_e, val) => {
-  try {
-    fs.mkdirSync(defaultRoot, { recursive: true });
-    let cfg = {};
-    try {
-      cfg = JSON.parse(fs.readFileSync(rootPointer, 'utf8')) || {};
-    } catch (e) {}
-    cfg.transparent = !!val;
-    fs.writeFileSync(rootPointer, JSON.stringify(cfg, null, 2), 'utf8');
-    return { ok: true, needRestart: true, transparent: cfg.transparent };
-  } catch (e) {
-    return { ok: false, error: e.message };
-  }
+  const ok = patchCfg({ minimizeToTray: !!val });
+  return ok ? { ok: true, minimizeToTray: !!val } : { ok: false, error: '写入 config.json 失败' };
 });
 
 // 受限环境（无 GPU 驱动）自动回退到软件渲染，而不是硬性禁用 GPU
@@ -227,6 +219,17 @@ process.on('unhandledRejection', (reason) => {
   } catch (e) {}
 });
 
+/** 第二个实例被单实例锁挡掉时，让已有窗口弹出来并提示一句 */
+function notifyAlreadyRunning() {
+  if (!win || win.isDestroyed()) return;
+  log('info', '检测到重复启动：已把已有窗口切回前台并提示');
+  const fire = () => send('app:already-running', true);
+  try {
+    if (win.webContents.isLoading()) win.webContents.once('did-finish-load', fire);
+    else fire();
+  } catch (e) {}
+}
+
 function createWindow() {
   if (win && !win.isDestroyed()) {
     if (win.isMinimized()) win.restore();
@@ -252,21 +255,20 @@ function createWindow() {
     }
   });
 
-  /* 磨砂：Windows 11 上直接让系统给窗口做 Acrylic（桌面也会被模糊） */
-if (process.platform === 'win32') {
-  try {
-    const build = Number((os.release().split('.')[2] || '0'));
-    if (build >= 22000 && typeof win.setBackgroundMaterial === 'function') {
-      win.setBackgroundMaterial('acrylic');
-      const got = typeof win.getBackgroundMaterial === 'function' ? win.getBackgroundMaterial() : 'n/a';
-      log('info', '已启用系统亚克力（背景材质：' + got + '）');
-    } else {
-      log('info', '系统版本 ' + os.release() + ' 不支持亚克力，改用 CSS 磨砂');
+  /* 磨砂：默认只用 CSS backdrop-filter，窗口保持全透明，圆角外能透出桌面。
+   * 系统级 Acrylic 会给整个窗口矩形铺一层不透明背景，导致圆角外露出灰块，
+   * 所以只在配置文件里显式写 { "acrylic": true } 时才启用。 */
+  if (process.platform === 'win32' && UI_CFG.acrylic === true) {
+    try {
+      const build = Number((os.release().split('.')[2] || '0'));
+      if (build >= 22000 && typeof win.setBackgroundMaterial === 'function') {
+        win.setBackgroundMaterial('acrylic');
+        log('info', '已启用系统亚克力（圆角外可能出现背景色块）');
+      }
+    } catch (e) {
+      log('warn', '启用亚克力失败：' + (e.message || e));
     }
-  } catch (e) {
-    log('warn', '启用亚克力失败，改用 CSS 磨砂：' + (e.message || e));
   }
-}
 
 win.webContents.on('preload-error', (_e, p, err) => {
   log('error', 'preload 加载失败：' + p + ' ' + (err && err.message));
@@ -326,9 +328,9 @@ win.on('closed', () => {
             out.sysMode = document.querySelector('#themeFab').dataset.mode + ' | ' +
               document.body.className + ' | sys=' + window.matchMedia('(prefers-color-scheme: dark)').matches;
             out.fab = document.querySelectorAll('#themeFab').length;
+            setMode('light');
             return out;
           })()`);
-          console.log('[smoke] appearance ' + JSON.stringify(r2));
           if (process.env.CL_SHOT) {
             win.setSize(1020, 700);
             win.show();
@@ -342,9 +344,14 @@ win.on('closed', () => {
             };
             try { require('fs').mkdirSync(path.join(__dirname, 'shots'), { recursive: true }); } catch (e) {}
             const clickMode = async (m) => win.webContents.executeJavaScript(
-              `(() => { const fab = document.querySelector('#themeFab'); let g = 0; while (fab.dataset.mode !== '${m}' && g++ < 4) fab.click(); })()`);
+              `document.querySelector('#themeFab').click()`);
+            await shot('ui-light', '#themeFab');
+            await clickMode('dark');
+            await shot('workbuddy-dark', null);
+            await shot('ui-dark', '#themeFab');
             await clickMode('light');
-            await shot('light-launch', null);
+            await shot('classic-light', null);
+            await shot('ui-system', '#themeFab');
             await clickMode('dark');
             await shot('dark-launch', null);
             await clickMode('light');
@@ -408,8 +415,9 @@ win.on('closed', () => {
           const list = String(process.env.CL_SHOT_ONLY).split(',').map((s) => s.trim()).filter(Boolean);
           const label = { launch: '启动游戏', versions: '版本管理', store: '材质包', mods: '模组管理', accounts: '账号管理', settings: '设置' };
           await run(`(() => { const s = document.createElement('style'); s.textContent = '.toast{display:none!important}'; document.head.appendChild(s); })()`);
-          // 统一成浅色，这样每张截图配色一致
-          await run(`(() => { const fab = document.querySelector('#themeFab'); let g = 0; while (fab.dataset.mode !== 'light' && g++ < 4) fab.click(); })()`);
+          // 统一成「默认主题 + 浅色」，这样每张截图配色一致
+          await run(`document.querySelector('#themeFab').click()`);
+          await run(`document.querySelector('#themeFab').click()`);
           await new Promise((r) => setTimeout(r, 900));
           for (const page of list) {
             await run(`(() => { const items = Array.from(document.querySelectorAll('.nav-item')); const b = items.find((x) => x.textContent.includes(${JSON.stringify(label[page] || page)})); if (b) b.click(); return !!b; })()`);
@@ -427,11 +435,13 @@ win.on('closed', () => {
         if (process.env.CL_SHOT_CLEAN) {
           const go = async (page, name) => {
             await run(`document.querySelector('[data-page="${page}"]').click()`);
+            await run(`document.querySelector('.content').scrollTop = 0`);
             await new Promise((r) => setTimeout(r, 1100));
             await cap(name);
           };
           await run(`(() => { const s = document.createElement('style'); s.textContent = '.toast{display:none!important}'; document.head.appendChild(s); })()`);
-          await run(`(() => { const fab = document.querySelector('#themeFab'); let g = 0; while (fab.dataset.mode !== 'light' && g++ < 4) fab.click(); })()`);
+          await run(`document.querySelector('[data-act="preset"][data-id="default"]') && document.querySelector('#themeFab').click()`);
+          await run(`document.querySelector('[data-act="mode"][data-id="light"]') && document.querySelector('#themeFab').click()`);
           await new Promise((r) => setTimeout(r, 900));
           try { win.setAlwaysOnTop(true, 'screen-saver'); win.focus(); win.moveTop(); } catch (e) {}
           await new Promise((r) => setTimeout(r, 600));
@@ -446,12 +456,17 @@ win.on('closed', () => {
           await run(`document.querySelector('.content').scrollTop = 99999`);
           await new Promise((r) => setTimeout(r, 800));
           await cap('clean-7-settings-bottom');
-          await run(`(() => { const fab = document.querySelector('#themeFab'); let g = 0; while (fab.dataset.mode !== 'dark' && g++ < 4) fab.click(); })()`);
+          await run(`document.querySelector('#themeFab').click()`);
           await new Promise((r) => setTimeout(r, 1200));
           await go('launch', 'clean-8-launch-dark');
-          await run(`(() => { const fab = document.querySelector('#themeFab'); let g = 0; while (fab.dataset.mode !== 'light' && g++ < 4) fab.click(); })()`);
+          await run(`document.querySelector('#themeFab').click()`);
           await new Promise((r) => setTimeout(r, 900));
-          await go('launch', 'clean-9-launch-light-final');
+          await run(`document.querySelector('#themeFab').click()`);
+          await new Promise((r) => setTimeout(r, 1000));
+          await go('launch', 'clean-9-theme-classic');
+          await run(`document.querySelector('#themeFab').click()`);
+          await new Promise((r) => setTimeout(r, 1000));
+          await go('launch', 'clean-10-theme-workbuddy');
           console.log('[ui-shot] clean done');
           setTimeout(() => app.quit(), 1200);
           return;
@@ -478,7 +493,8 @@ win.on('closed', () => {
         await run(`document.querySelector('#modalClose').click(); document.querySelector('#launchBtn').click()`);
         await cap('ui-7-launching');
         // 最后恢复成默认主题 + 浅色，补一张浅色首屏
-        await run(`(() => { const fab = document.querySelector('#themeFab'); let g = 0; while (fab.dataset.mode !== 'light' && g++ < 4) fab.click(); })()`);
+        await run(`document.querySelector('[data-act="preset"][data-id=""]') && document.querySelector('#themeFab').click()`);
+        await run(`document.querySelector('[data-act="mode"][data-id="light"]') && document.querySelector('#themeFab').click()`);
         await new Promise((r) => setTimeout(r, 600));
         await cap('ui-9-light');
         console.log('[ui-shot] done');
@@ -694,15 +710,62 @@ win.on('closed', () => {
   ipcMain.on('win:maximize', () => (win.isMaximized() ? win.unmaximize() : win.maximize()));
   ipcMain.on('win:close', () => win.close());
   // 托盘关闭策略：点 × 只是隐藏，托盘菜单里才有「退出」
-  win.on('close', (e) => {
-    if (quitting) return;
-    if (UI_CFG.minimizeToTray === false) return;
-    e.preventDefault();
+  const hideToTray = () => {
     win.hide();
     if (tray && !tray.__hinted) {
       tray.__hinted = true;
       log('info', '已最小化到托盘（右键托盘图标可退出）');
       send('tray:hint', true);
+    }
+  };
+
+  // 第一次关闭：在应用内弹窗问「最小化还是退出」，用户在界面里点选
+  let closeAskedPending = false;
+  win.on('close', (e) => {
+    if (quitting) return;
+    e.preventDefault();
+
+    // 已经问过：按记住的选择走
+    if (UI_CFG.closeAsked === true) {
+      if (UI_CFG.minimizeToTray === false) {
+        quitting = true;
+        app.quit();
+      } else {
+        hideToTray();
+      }
+      return;
+    }
+
+    if (closeAskedPending) return; // 弹窗已经开着，别叠加
+    closeAskedPending = true;
+    try {
+      if (!win.isVisible()) win.show();
+      win.focus();
+    } catch (err) {}
+    send('app:ask-close', { defaultMinimize: UI_CFG.minimizeToTray !== false });
+    // 兜底：界面 8 秒没响应就按最小化处理，避免窗口卡住关不掉
+    setTimeout(() => {
+      if (closeAskedPending) {
+        closeAskedPending = false;
+        patchCfg({ closeAsked: true });
+        hideToTray();
+      }
+    }, 8000);
+  });
+
+  // 界面里点选之后回复：minimize=true 最小化，false 退出
+  ipcMain.on('app:close-choice', (_e, opt) => {
+    const o = opt || {};
+    closeAskedPending = false;
+    patchCfg({
+      closeAsked: true,
+      ...(o.remember === false ? {} : { minimizeToTray: !!o.minimize }),
+    });
+    log('info', '关闭方式选择：' + (o.minimize ? '最小化到托盘' : '直接退出') + (o.remember === false ? '（本次有效）' : '（已记住）'));
+    if (o.minimize) hideToTray();
+    else {
+      quitting = true;
+      app.quit();
     }
   });
 
@@ -1716,6 +1779,7 @@ if (!gotLock) {
     if (win.isMinimized()) win.restore();
     if (!win.isVisible()) win.show();
     win.focus();
+    notifyAlreadyRunning();
   });
 }
 

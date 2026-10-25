@@ -12,9 +12,9 @@
 
 <p>
   <img alt="platform" src="https://img.shields.io/badge/platform-Windows%20x64-2b7bf0">
-  <img alt="electron" src="https://img.shields.io/badge/Electron-33-47848f">
+  <img alt="electron" src="https://img.shields.io/badge/Electron-33.4-47848f">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-00c29a">
-  <img alt="version" src="https://img.shields.io/badge/version-1.1.0-4d6bfe">
+  <img alt="version" src="https://img.shields.io/badge/version-1.3.0-4d6bfe">
 </p>
 
 ![FCL 启动页](docs/screenshots/launch.jpg)
@@ -52,6 +52,8 @@
 - 微软账号支持上传皮肤到官方服务器，服务器端立即生效
 
 ### 界面
+
+- **外观只有一个入口**：右下角圆形按钮循环「浅色 → 深色 → 跟随系统」，不再有主题色板
 
 - **浅色 / 深色 / 跟随系统**：右下角圆形悬浮按钮切换，图标随状态在太阳 / 月亮 / 自动之间变化，点一次循环切换
 - **自定义背景图 + 磨砂玻璃**：卡片、侧栏、壁纸整体做 backdrop-filter 模糊，Windows 11 上再叠加系统级 Acrylic；背景不透明度 30%–100% 实时生效
@@ -206,6 +208,7 @@ exe 未做代码签名，属于常见误报。可以下载后自行校验 SHA256
 - [BMCLAPI](https://bmclapidoc.bangbang93.com) · 阿里云 / 腾讯云 maven 镜像
 - [Adoptium](https://adoptium.net) · 清华 TUNA · 华为云 OpenJDK 镜像
 - [CustomSkinLoader](https://github.com/xfl03/MCLoader)（内置构建，MIT）
+- **特别感谢 [@ImAlexBlock](https://github.com/ImAlexBlock)**：他在 [PR #1](https://github.com/Him-Wang/FCL/pull/1) 里把样式重构成 `tokens.css` + `app.css` 两层、修掉深色模式悬停底色与 JS 强调色失效两个真 bug、把品牌色对比度提到 4.5:1、重做了无障碍（h1/h2、aria、focus 可见、switch 语义），还写下 `design.md` 设计系统说明 —— 1.3.0 的界面基本建立在这次重构之上。
 
 ## 作者
 
@@ -214,6 +217,7 @@ exe 未做代码签名，属于常见误报。可以下载后自行校验 SHA256
 | 作者 | **Hermintway** | 项目发起人 · 需求与验收 |
 | 共同创造 | **DeepSeek Harness（DSH）** | 架构与代码实现：安装与下载链路、镜像策略、Java 一键部署、下载队列、模组与中文搜索、材质包与光影、皮肤系统、界面与打包发布 |
 | 共同创造 | **WorkBuddy** | 初版界面原型：PCL 风格布局、三套主题配色、像素头像与鱼形图标，以及早期 xmcl 接入与交付文档 |
+| 界面重构 | **AlexBlock（[@ImAlexBlock](https://github.com/ImAlexBlock)）** | 设计变量与组件样式分层、深色模式与对比度修复、无障碍改造、`design.md` |
 
 ## License
 

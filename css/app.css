@@ -916,3 +916,35 @@ button.chip.jump:hover b { color: var(--accent-text); }
     transition-duration: .01ms !important;
   }
 }
+
+
+/* ==========================================================================
+   圆角与整窗裁剪（1.2.0 的最终方案，接到 tokens 上）
+   ========================================================================== */
+body {
+  /* 比 PR 默认值再圆一档：卡片 24px、常用控件 14–20px */
+  --r-md: 14px;
+  --r-lg: 16px;
+  --r-card: 24px;
+  --r-xl: 20px;
+  --r-window: 18px;
+}
+
+/* 整窗四角：窗口本身透明，圆角处透出桌面。
+   .bg-* 是 position:fixed 图层，只有让 body 成为它们的包含块，
+   才会被 body 的圆角 + overflow 裁剪（blur 会向外扩散，仅靠图层自身圆角盖不住）。 */
+html, body {
+  background: transparent;
+  border-radius: var(--r-window);
+  overflow: hidden;
+}
+body {
+  transform: translateZ(0);
+}
+.app {
+  border-radius: var(--r-window);
+  overflow: hidden;
+}
+.bg-blur, .bg-photo, .bg-tint {
+  border-radius: var(--r-window);
+}
