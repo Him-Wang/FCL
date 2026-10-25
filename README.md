@@ -117,6 +117,7 @@ FCL\
 - 单文件便携版，**无需安装**，首次启动会自解压到 `%TEMP%`（退出后自动清理）
 - 首次启动没有 Java 也能用：点「启动游戏」会自动部署 Java 25（约 56 MB，走清华镜像）
 - 未做代码签名，Windows 可能提示「已保护你的电脑」→ 更多信息 → 仍要运行
+- **macOS**：到 [v1.0.0-macos](https://github.com/Him-Wang/FCL/releases/tag/v1.0.0-macos) 下载 dmg（Apple Silicon 选 arm64、Intel 选 x64），首次打开需右键 →「打开」；不会装的话看 [macOS 安装指南](docs/macOS-安装指南.md)
 
 ## 从源码运行
 
@@ -215,7 +216,7 @@ exe 未做代码签名，属于常见误报。可以下载后自行校验 SHA256
 
 ## 已知限制
 
-- 仅 Windows x64（打包目标为 portable，未做 macOS / Linux 适配）
+- Windows x64 为便携版；macOS 另出 dmg（Apple Silicon / Intel 分架构），未做 Linux 适配
 - 未签名，首次运行需要手动放行
 - 皮肤模组依赖 CustomSkinLoader 对目标 MC 版本的兼容性，极新的快照版本可能尚未适配
 - 内置的 CSL 构建截至发布时刻；遇到新版本可在 `assets/csl` 里补充构建
