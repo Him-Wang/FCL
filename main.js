@@ -738,6 +738,7 @@ win.on('closed', () => {
 
   // 第一次关闭：在应用内弹窗问「最小化还是退出」，用户在界面里点选
   let closeAskedPending = false;
+  let closeAskSeq = 0; // 每次询问的序号，避免旧的超时定时器把新的询问取消掉
   win.on('close', (e) => {
     if (quitting) return;
     e.preventDefault();
@@ -763,14 +764,25 @@ win.on('closed', () => {
       win.focus();
     } catch (err) {}
     send('app:ask-close', { defaultMinimize: UI_CFG.minimizeToTray !== false });
-    // 兜底：界面 8 秒没响应就按最小化处理，避免窗口卡住关不掉
+
+    // 兜底：界面很久没响应（例如正在下载/校验，渲染层卡住）。
+    // 以前这里是"自动按最小化处理"，结果用户在弹窗里点的是「直接退出」，
+    // 但界面卡了 8 秒没回消息，窗口先被这条兜底最小化了 —— 看起来就是"选了退出却最小化"。
+    // 现在兜底只做一件事：取消这次关闭、把窗口留在前台，让用户再点一次。
+    const pendingAt = ++closeAskSeq;
     setTimeout(() => {
-      if (closeAskedPending) {
+      if (closeAskedPending && closeAskSeq === pendingAt) {
         closeAskedPending = false;
-        patchCfg({ closeAsked: true });
-        hideToTray();
+        log('warn', '关闭询问超时（界面可能卡顿），本次不关闭，窗口保持打开');
+        try {
+          if (!win.isDestroyed()) {
+            win.show();
+            win.focus();
+          }
+        } catch (e) {}
+        send('app:close-timeout', true);
       }
-    }, 8000);
+    }, 20000);
   });
 
   // 界面里点选之后回复：minimize=true 最小化，false 退出
@@ -1714,6 +1726,14 @@ async function openMicrosoftLogin() {
         log('info', '微软登录：已拿到授权码，正在换取 Minecraft 账号…');
         const tok = await ms.exchangeCode(code);
         const acc = await ms.finishWithToken(tok.access_token);
+        const d = acc.diag || {};
+        log(
+          'info',
+          '微软登录结果：name=' + acc.name + ' uuid=' + (acc.uuid || '-') +
+            ' profileOk=' + d.profileOk + ' skins=' + d.skins + ' nameSource=' + d.nameSource +
+            (d.profileErr ? ' profileErr=' + d.profileErr : '') +
+            (d.skinErr ? ' skinErr=' + d.skinErr : ''),
+        );
         log('info', '微软登录成功：' + acc.name);
         ok(acc);
       } catch (e) {
@@ -1771,7 +1791,16 @@ ipcMain.handle('ms:complete-url', async (_e, raw) => {
   if (!code) throw new Error('链接里没有 code');
   log('info', '微软登录：正在用浏览器回调里的 code 换取账号');
   const tok = await ms.exchangeCode(code);
-  return await ms.finishWithToken(tok.access_token);
+  const acc = await ms.finishWithToken(tok.access_token);
+  const d = acc.diag || {};
+  log(
+    'info',
+    '微软登录结果（浏览器方式）：name=' + acc.name + ' uuid=' + (acc.uuid || '-') +
+      ' profileOk=' + d.profileOk + ' skins=' + d.skins +
+      (d.profileErr ? ' profileErr=' + d.profileErr : '') +
+      (d.skinErr ? ' skinErr=' + d.skinErr : ''),
+  );
+  return acc;
 });
 
 /* ---------------- 其它 ---------------- */

@@ -1739,6 +1739,24 @@ const placeholder = () => {
   }
 
   let msTimer = null;
+  /** 把主进程返回的微软登录结果整理成账号对象（两处登录入口共用） */
+  async function makeMicrosoftAccount(r) {
+    const acc = {
+      id: 'a' + Date.now(),
+      name: (r && r.name && String(r.name).trim()) || (r && r.gamertag) || '微软账号',
+      type: 'microsoft',
+      uuid: r && r.uuid,
+      accessToken: r && r.accessToken,
+      avatar: (r && r.avatar) || makeAvatar((r && r.name) || 'MS', 'random', 8),
+      skin: r && r.skinDataUrl ? { variant: r.skinVariant || 'classic', dataUrl: r.skinDataUrl } : undefined,
+    };
+    if (acc.skin && acc.skin.dataUrl) {
+      const head = await skinHeadDataUrl(acc.skin.dataUrl, 64);
+      if (head) acc.avatar = head;
+    }
+    return acc;
+  }
+
   async function addMicrosoft() {
     if (!hasElectron) { toast('演示模式：微软登录需要桌面版'); return; }
     if (!L.msLogin) { toast('当前版本还不支持内嵌微软登录'); return; }
@@ -1748,19 +1766,7 @@ const placeholder = () => {
     try {
       appendLog('info', '正在打开微软登录窗口…');
       const r = await L.msLogin();
-      const acc = {
-        id: 'a' + Date.now(),
-        name: r.name,
-        type: 'microsoft',
-        uuid: r.uuid,
-        accessToken: r.accessToken,
-        avatar: r.avatar || makeAvatar(r.name, 'random', 8),
-        skin: r.skinDataUrl ? { variant: r.skinVariant || 'classic', dataUrl: r.skinDataUrl } : undefined,
-      };
-      if (acc.skin && acc.skin.dataUrl) {
-        const head = await skinHeadDataUrl(acc.skin.dataUrl, 64);
-        if (head) acc.avatar = head;
-      }
+      const acc = await makeMicrosoftAccount(r);
       state.accounts.push(acc);
       state.currentAccount = acc.id;
       save();
@@ -1803,7 +1809,7 @@ const placeholder = () => {
       </div>
     `);
 
-    $('#modalBody [data-act="ms-open-browser"]').forEach((el) => {
+    $$('#modalBody [data-act="ms-open-browser"]').forEach((el) => {
       el.onclick = async () => {
         try {
           await L.msBrowserLogin();
@@ -1813,8 +1819,8 @@ const placeholder = () => {
         }
       };
     });
-    $('#modalBody [data-act="ms-cancel"]').forEach((el) => (el.onclick = () => closeModal()));
-    $('#modalBody [data-act="ms-submit"]').forEach((el) => {
+    $$('#modalBody [data-act="ms-cancel"]').forEach((el) => (el.onclick = () => closeModal()));
+    $$('#modalBody [data-act="ms-submit"]').forEach((el) => {
       el.onclick = async () => {
         const url = ($('#msUrl') || {}).value || '';
         if (!url.trim()) { toast('请先粘贴回调链接'); return; }
@@ -1822,20 +1828,7 @@ const placeholder = () => {
         el.textContent = '登录中…';
         try {
           const acc = await L.msCompleteUrl(url);
-          const account = {
-            id: 'a' + Date.now(),
-            name: acc.name,
-            uuid: acc.uuid,
-            type: 'microsoft',
-            accessToken: acc.accessToken,
-            skin: acc.skinDataUrl ? { variant: acc.skinVariant || 'classic', dataUrl: acc.skinDataUrl } : undefined,
-          };
-          if (account.skin && account.skin.dataUrl) {
-            const head = await skinHeadDataUrl(account.skin.dataUrl, 64);
-            if (head) account.avatar = head;
-          } else {
-            account.avatar = makeAvatar(account.name, 'random', 8);
-          }
+          const account = await makeMicrosoftAccount(acc);
           state.accounts.push(account);
           state.currentAccount = account.id;
           save();
@@ -2230,6 +2223,10 @@ const placeholder = () => {
     if (L.onTrayHint) L.onTrayHint(() => toast('已最小化到托盘，右键托盘图标可以退出', 4200));
 
     // 第一次点 × 时，主进程通知界面弹窗询问：最小化到托盘 or 直接退出
+    if (L.onCloseTimeout) {
+      L.onCloseTimeout(() => toast('界面刚才有点卡，这次没关成，请再点一次 ×', 4200));
+    }
+
     if (L.onAskClose) {
       L.onAskClose(() => {
         openModal('关闭 FCL', `
@@ -2246,8 +2243,8 @@ const placeholder = () => {
           closeModal();
           if (L.closeChoice) L.closeChoice({ minimize, remember });
         };
-        $('#modalBody [data-act="close-tray"]').forEach((el) => (el.onclick = () => ask(true)));
-        $('#modalBody [data-act="close-quit"]').forEach((el) => (el.onclick = () => ask(false)));
+        $$('#modalBody [data-act="close-tray"]').forEach((el) => (el.onclick = () => ask(true)));
+        $$('#modalBody [data-act="close-quit"]').forEach((el) => (el.onclick = () => ask(false)));
       });
     }
     refreshQueue();
