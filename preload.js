@@ -59,6 +59,7 @@ contextBridge.exposeInMainWorld('launcher', {
 
   msStart: (clientId) => ipcRenderer.invoke('ms:start', clientId),
   msPoll: (req) => ipcRenderer.invoke('ms:poll', req),
+  msLogin: () => ipcRenderer.invoke('ms:login'),
 
   modToggle: (req) => ipcRenderer.invoke('mc:mod-toggle', req),
   modDelete: (req) => ipcRenderer.invoke('mc:mod-delete', req),

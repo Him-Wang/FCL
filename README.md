@@ -138,7 +138,7 @@ lib/modstore.js      Modrinth 搜索与安装
 lib/cnmod.js         MC百科中文搜索（含缓存与单飞）
 lib/localskin.js     CustomSkinLoader 集成（自带构建、配置修补、皮肤写入）
 lib/net.js           网络与下载工具
-lib/microsoft.js     微软设备码登录
+lib/microsoft.js     微软登录（内嵌窗口 + 设备码兜底）
 assets/skins/        6 套内置皮肤（64×64 PNG）
 assets/csl/          内置的 CustomSkinLoader 构建 + manifest
 tools/               图标生成、皮肤生成、CSL 拉取、打包脚本
@@ -146,7 +146,7 @@ tools/               图标生成、皮肤生成、CSL 拉取、打包脚本
 
 ## 配置
 
-- **微软登录**：需要自己的 Azure 应用 Client ID，填在 设置 → 微软登录 Client ID（免费申请，重定向 URI 填 `https://login.microsoftonline.com/common/oauth2/nativeclient`）。不填则只能用离线账号。
+- **微软登录**：点「使用微软账号登录」会弹出**内嵌的微软登录窗口**，登完自动回到启动器并添加账号，**不需要自己注册 Azure 应用**（默认使用公开的 Xbox 客户端 ID）。设置里仍保留 Client ID 输入框，想换成自己的应用时可以填（走设备码流程）。
 - **内存 / JVM 参数 / 窗口尺寸**：设置页可调，默认 4 GB。
 
 ## 常见问题

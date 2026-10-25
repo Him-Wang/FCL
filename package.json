@@ -1,7 +1,7 @@
 {
   "name": "fmcl",
   "productName": "FMCL",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "FishMineCraftLauncher (FMCL) — PCL 风格的 Minecraft 桌面启动器（Electron）",
   "main": "main.js",
   "scripts": {

@@ -135,11 +135,21 @@ try {
 } catch (e) {}
 
 
-// 兼容受限运行环境（无 GPU / 沙箱）：不影响正常使用
-app.commandLine.appendSwitch('no-sandbox');
-app.commandLine.appendSwitch('disable-gpu');
-app.commandLine.appendSwitch('disable-software-rasterizer');
-app.commandLine.appendSwitch('in-process-gpu');
+/* 渲染/GPU 相关开关：
+ * 早期为了在无 GPU、带沙箱的受限环境里也能跑，强行加了 no-sandbox / disable-gpu /
+ * in-process-gpu / 禁用软件光栅。这些在真实机器上会显著增加闪退概率（GPU 进程直接
+ * 跑在主进程里，一旦上下文创建失败整个应用就退出），这里改成默认不干预，
+ * 只有设置里明确要求「窗口背景透明」时才把窗口做成 transparent。 */
+let UI_CFG = {};
+try {
+  if (fs.existsSync(rootPointer)) UI_CFG = JSON.parse(fs.readFileSync(rootPointer, 'utf8')) || {};
+} catch (e) {}
+const USE_TRANSPARENT = !!UI_CFG.transparent;
+
+// 受限环境（无 GPU 驱动）自动回退到软件渲染，而不是硬性禁用 GPU
+if (process.env.FMCL_SOFTWARE_RENDER === '1') {
+  app.disableHardwareAcceleration();
+}
 
 let win = null;
 let gameProcess = null;
@@ -192,8 +202,8 @@ function createWindow() {
     frame: false,
     show: !process.env.CL_SMOKE,
     icon: path.join(__dirname, 'build', 'icon.ico'),
-    backgroundColor: '#00000000',
-    transparent: true,
+    backgroundColor: USE_TRANSPARENT ? '#00000000' : '#f4f6f9',
+    transparent: USE_TRANSPARENT,
     title: 'FMCL',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -203,6 +213,14 @@ function createWindow() {
   });
 
   win.loadFile(path.join(__dirname, 'index.html'));
+
+/* 闪退排查：把渲染进程/GPU 子进程的意外退出、窗口关闭都记进 FMCL\logs\app.log */
+win.webContents.on('render-process-gone', (_e, details) => {
+  log('error', `渲染进程退出：${details.reason}（exitCode ${details.exitCode}）`);
+});
+win.webContents.on('unresponsive', () => log('warn', '窗口无响应'));
+win.webContents.on('responsive', () => log('info', '窗口恢复响应'));
+win.on('closed', () => log('warn', '主窗口已关闭'));
 
   if (process.env.CL_SMOKE) {
     win.webContents.on('console-message', (_e, level, message, line, sourceId) => {
@@ -1452,6 +1470,82 @@ function fspRename(from, to) {
 ipcMain.handle('ms:start', async (_e, clientId) => ms.startDeviceLogin(clientId));
 ipcMain.handle('ms:poll', async (_e, req) => ms.pollLogin(req.clientId, req.deviceCode, req.expires));
 
+/* ---------------- 微软登录：内嵌登录窗口（玩家不用申请 Azure 应用） ---------------- */
+let msLoginWin = null;
+ipcMain.handle('ms:login', async () => {
+  if (msLoginWin) throw new Error('登录窗口已经打开了');
+  return await new Promise((resolve, reject) => {
+    const authWin = new BrowserWindow({
+      width: 540,
+      height: 720,
+      parent: win,
+      modal: true,
+      autoHideMenuBar: true,
+      title: '登录微软账号',
+      backgroundColor: '#ffffff',
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        partition: 'persist:mslogin',
+        sandbox: true,
+      },
+    });
+    msLoginWin = authWin;
+    let settled = false;
+
+    const finish = (fn, arg) => {
+      if (settled) return;
+      settled = true;
+      msLoginWin = null;
+      try {
+        if (!authWin.isDestroyed()) authWin.destroy();
+      } catch (e) {}
+      fn(arg);
+    };
+    const ok = (acc) => finish(resolve, acc);
+    const bad = (err) => finish(reject, err instanceof Error ? err : new Error(String(err)));
+
+    const handle = async (u) => {
+      if (!u || !u.startsWith(ms.LIVE_REDIRECT)) return;
+      try {
+        const q = new URL(u).searchParams;
+        const err = q.get('error_description') || q.get('error');
+        const code = q.get('code');
+        if (err) return bad(new Error(err));
+        if (!code) return bad(new Error('微软没有返回授权码'));
+        log('info', '微软登录：已拿到授权码，正在换取 Minecraft 账号…');
+        const tok = await ms.exchangeCode(code);
+        const acc = await ms.finishWithToken(tok.access_token);
+        log('info', '微软登录成功：' + acc.name);
+        ok(acc);
+      } catch (e) {
+        bad(e);
+      }
+    };
+
+    const intercept = (e, u) => {
+      if (u && u.startsWith(ms.LIVE_REDIRECT)) {
+        if (e && e.preventDefault) e.preventDefault();
+        handle(u);
+      }
+    };
+    authWin.webContents.on('will-redirect', intercept);
+    authWin.webContents.on('will-navigate', intercept);
+    authWin.webContents.on('did-navigate', (_e, u) => {
+      if (u && u.startsWith(ms.LIVE_REDIRECT)) handle(u);
+    });
+    authWin.on('closed', () => {
+      msLoginWin = null;
+      if (!settled) {
+        settled = true;
+        reject(new Error('已取消微软登录'));
+      }
+    });
+
+    authWin.loadURL(ms.buildAuthUrl()).catch((e) => bad(e));
+  });
+});
+
 /* ---------------- 其它 ---------------- */
 ipcMain.handle('dialog:openFolder', async () => {
   const res = await dialog.showOpenDialog(win, { properties: ['openDirectory'] });
@@ -1482,5 +1576,11 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
+  log('warn', '所有窗口已关闭，应用退出');
   if (process.platform !== 'darwin') app.quit();
+});
+
+/* GPU / 网络等子进程非正常退出时留个记录（这类问题以前表现为“闪退”） */
+app.on('child-process-gone', (_e, details) => {
+  log('error', `子进程退出：${details.type} / ${details.reason}（exitCode ${details.exitCode}）`);
 });

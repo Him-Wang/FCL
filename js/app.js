@@ -1535,48 +1535,39 @@
   let msTimer = null;
   async function addMicrosoft() {
     if (!hasElectron) { toast('演示模式：微软登录需要桌面版'); return; }
-    if (!state.settings.clientId) {
-      toast('请先在设置中填写微软登录 Client ID');
-      switchPage('settings');
-      return;
-    }
-    const box = $('#msCode');
-    if (msTimer) { clearInterval(msTimer); msTimer = null; box.classList.add('hidden'); return; }
-
+    if (!L.msLogin) { toast('当前版本还不支持内嵌微软登录'); return; }
+    const btn = $('[data-act="login-ms"]');
+    const old = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = '登录中…'; }
     try {
-      const s = await L.msStart(state.settings.clientId);
-      $('#msCodeText').textContent = s.userCode;
-      $('#msVerify').textContent = s.verifyUrl;
-      box.classList.remove('hidden');
-      appendLog('info', `请在浏览器打开 ${s.verifyUrl} 并输入 ${s.userCode}`);
-      if (L.open) L.open(s.verifyUrl);
-
-      msTimer = setInterval(async () => {
-        try {
-          const r = await L.msPoll({ clientId: state.settings.clientId, deviceCode: s.deviceCode, expires: s.expires });
-          if (r.pending) return;
-          clearInterval(msTimer); msTimer = null;
-          box.classList.add('hidden');
-          const acc = {
-            id: 'a' + Date.now(), name: r.account.name, type: 'microsoft',
-            uuid: r.account.uuid, accessToken: r.account.accessToken,
-            avatar: r.account.avatar || makeAvatar(r.account.name, 'random', 8)
-          };
-          state.accounts.push(acc);
-          state.currentAccount = acc.id;
-          save(); renderAccounts(); renderHero();
-          toast('微软账号登录成功：' + acc.name);
-          appendLog('info', '微软账号登录成功：' + acc.name);
-        } catch (e) {
-          clearInterval(msTimer); msTimer = null;
-          box.classList.add('hidden');
-          appendLog('error', '微软登录失败：' + (e.message || e));
-          toast('登录失败：' + (e.message || e));
-        }
-      }, s.interval);
+      appendLog('info', '正在打开微软登录窗口…');
+      const r = await L.msLogin();
+      const acc = {
+        id: 'a' + Date.now(),
+        name: r.name,
+        type: 'microsoft',
+        uuid: r.uuid,
+        accessToken: r.accessToken,
+        avatar: r.avatar || makeAvatar(r.name, 'random', 8),
+      };
+      state.accounts.push(acc);
+      state.currentAccount = acc.id;
+      save();
+      renderAccounts();
+      renderHero();
+      toast('微软账号登录成功：' + acc.name, 3600);
+      appendLog('info', '微软账号登录成功：' + acc.name);
     } catch (e) {
-      toast('登录发起失败：' + (e.message || e));
-      appendLog('error', e.message || String(e));
+      const msg = e && e.message ? e.message : String(e);
+      if (/已取消/.test(msg)) {
+        appendLog('info', '已取消微软登录');
+        toast('已取消微软登录');
+      } else {
+        appendLog('error', '微软登录失败：' + msg);
+        toast('登录失败：' + msg, 5000);
+      }
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = old; }
     }
   }
 
