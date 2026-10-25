@@ -841,22 +841,47 @@
 
   function renderSkin() {
     const a = curAcc();
+    const skin = skinOf(a);
+    const isMs = !!(a && a.type === 'microsoft');
+
+    // 标题与预览下方
     const who = $('#skinWho');
-    if (who) who.textContent = a ? `· ${a.name}（${a.type === 'microsoft' ? '微软账号' : '离线账号'}）` : '· 先选择一个账号';
-    const variant = skinOf(a).variant || 'classic';
-    $$('[data-act="skin-variant"]').forEach((b) => b.classList.toggle('active', b.dataset.id === variant));
-    const btn = $('#skinUploadBtn');
-    if (btn) btn.classList.toggle('hidden', !(a && a.type === 'microsoft' && a.accessToken && skinOf(a).dataUrl));
+    if (who) who.textContent = a ? a.name + (isMs ? ' · 正版账号' : ' · 离线账号') : '未选择账号';
+    const heroName = $('#skinHeroName');
+    if (heroName) heroName.textContent = a ? a.name : '未选择账号';
+
+    // 皮肤来源
+    const src = $('#skinSourceTxt');
+    if (src) {
+      if (!a) src.textContent = '—';
+      else if (!skin.dataUrl) src.textContent = '默认皮肤（未设置）';
+      else if (skin.name) src.textContent = '来自皮肤库 · ' + skin.name;
+      else if (isMs) src.textContent = '已同步自微软账号';
+      else src.textContent = '本地文件';
+    }
+
+    // 模型分段
+    const variant = skin.variant || 'classic';
+    $$('[data-act="skin-variant"]').forEach((b) => {
+      const on = b.dataset.id === variant;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+
+    // 上传到微软：正版账号且有皮肤数据时才显示
+    const up = $('#skinUploadBtn');
+    if (up) up.classList.toggle('hidden', !(isMs && a.accessToken && skin.dataUrl));
+
+    // 说明文字
     const hint = $('#skinHint');
     if (hint) {
       hint.textContent = !a
-        ? '先在上方添加 / 选中一个账号，再给这个账号设置皮肤。'
-        : a.type === 'microsoft'
-          ? '选好皮肤和身材后点「上传到微软账号」，官方服务器上立即生效；令牌过期时重新登录一次即可。'
-          : '离线账号：点「在游戏内生效」会自动装 CustomSkinLoader（Fabric/Forge 版本）并把皮肤写进它的本地皮肤目录；装好后先进一次游戏让 CSL 生成配置，之后再进游戏就能看到自己的皮肤。';
+        ? '先在上方添加或选中一个账号，再给它设置皮肤。'
+        : isMs
+          ? '正版账号：登录时已自动同步官方皮肤；换好皮肤和模型后点「上传到微软」，官方服务器立即生效。'
+          : '离线账号：点「在游戏内生效」会自动安装 CustomSkinLoader 并把皮肤写入它的目录；装好后先进一次游戏让 CSL 生成配置，之后进游戏就能看到。';
     }
-    const heroName = $('#skinHeroName');
-    if (heroName) heroName.textContent = a ? a.name + (a.type === 'microsoft' ? '（正版）' : '（离线）') : '未选择账号';
+
     drawSkin(a);
     refreshLocalSkin();
     renderSkinLib();

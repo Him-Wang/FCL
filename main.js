@@ -1,3 +1,15 @@
+/* 环境里如果被设了 ELECTRON_RUN_AS_NODE（某些开发工具会设），本程序会被当成普通 Node
+   启动，表现就是"点了没反应/闪退"。这里检测到就清掉该变量、重新以 Electron 方式拉起自己。 */
+if (process.env.ELECTRON_RUN_AS_NODE) {
+  try {
+    const { spawn } = require('child_process');
+    const env = Object.assign({}, process.env);
+    delete env.ELECTRON_RUN_AS_NODE;
+    spawn(process.execPath, [], { env, detached: true, stdio: 'ignore' }).unref();
+  } catch (e) {}
+  process.exit(0);
+}
+
 const { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, nativeImage, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -817,6 +829,13 @@ async function findJava(custom) {
  *  远古版（alpha/beta）和老版本只能跑 Java 8；1.17+ 要 17，1.20.5+ 要 21 */
 function guessJavaMajor(versionId) {
   const s = String(versionId || '');
+  // 新的版本号体系（26.x 起）：26 及以后用 Java 25，21~25 用 21
+  const modern = /^(\d+)\.(\d+)/.exec(s);
+  if (modern && !s.startsWith('1.')) {
+    const major = Number(modern[1]);
+    if (major >= 26) return 25;
+    if (major >= 21) return 21;
+  }
   const m = /^1\.(\d+)(?:\.(\d+))?/.exec(s);
   if (m) {
     const minor = Number(m[1]);
@@ -939,8 +958,20 @@ async function performInstall(req, onProgress) {
       }
       req.forge = list[0];
     }
-    const java = await findJava(req.javaPath);
-    if (!java.path) throw new Error('未找到 Java，无法运行 Forge 安装器');
+    // Forge 安装器是 jar，必须有 Java 才能跑；没装就自动部署一个，别让用户自己去配
+    let java = await findJava(req.javaPath);
+    if (!java.path) {
+      const major = await requiredJavaMajor(gameDir, req.mc).catch(() => 0) || guessJavaMajor(req.mc);
+      log('info', `未检测到 Java，自动部署 Java ${major}（Forge 安装器需要）…`);
+      onProgress &&
+        onProgress({ phase: '部署 Java', name: `Java ${major}`, done: 0, total: 0, current: 0, count: 1 });
+      const deployed = await javaRuntime.install(major, (p) => {
+        send('java:progress', p);
+        onProgress && onProgress(Object.assign({ phase: '部署 Java' }, p || {}));
+      });
+      java = { path: deployed.path, version: deployed.version };
+      log('info', `Java ${major} 部署完成：${deployed.path}`);
+    }
     return installer.installForge(req.mc, req.forge, gameDir, java.path, onProgress);
   }
   return installer.installVanilla(req.id, gameDir, onProgress, req.assets !== false);
@@ -1354,7 +1385,13 @@ ipcMain.handle('sys:env', async (_e, opt) => {
     legacyGameDir: legacy,
     javaDir: JAVA_DIR,
     portable: !!process.env.PORTABLE_EXECUTABLE_DIR,
-    installedVersions: installed,
+    installedVersions: installed.filter((id) => {
+      try {
+        return fs.existsSync(path.join(gameDir, 'versions', id, id + '.json'));
+      } catch (e) {
+        return false;
+      }
+    }),
     localMods: mods,
     resourcePacks: scanPacks('resourcepacks'),
     shaderPacks: scanPacks('shaderpacks', /\.(zip|jar)(\.disabled)?$/i),

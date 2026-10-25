@@ -287,36 +287,48 @@
         <div class="panel" id="skinPanel">
           <input type="file" id="skinFile" accept="image/png,.png" hidden />
           <div class="panel-head">
-            <span>皮肤 <b class="muted" id="skinWho"></b></span>
-            <span class="row">
-              <button type="button" class="btn sm primary" data-act="pick-skin">更换皮肤</button>
-              <button type="button" class="btn sm ghost" data-act="reset-skin">恢复默认</button>
-              <button type="button" class="btn sm" data-act="enable-local-skin" id="localSkinBtn">在游戏内生效</button>
-              <button type="button" class="btn sm ghost hidden" data-act="upload-skin" id="skinUploadBtn">上传到微软</button>
-            </span>
+            <span class="panel-title">皮肤</span>
+            <span class="skin-acc" id="skinWho">未选择账号</span>
           </div>
-          <div class="skin-wrap">
-            <div class="skin-hero">
+
+          <div class="skin-body">
+            <div class="skin-preview-card">
               <div class="skin-stage"><canvas id="skinPreview" width="196" height="308"></canvas></div>
-              <div class="skin-hero-name" id="skinHeroName">未选择账号</div>
+              <div class="skin-preview-meta">
+                <b id="skinHeroName">未选择账号</b>
+                <span class="muted" id="skinSourceTxt">—</span>
+              </div>
             </div>
-            <div class="skin-side">
-              <div class="skin-block">
-                <div class="skin-label">皮肤模型</div>
-                <div class="skin-seg">
+
+            <div class="skin-config">
+              <section class="skin-group">
+                <h4 class="skin-group-title">模型</h4>
+                <div class="skin-seg" role="group" aria-label="皮肤模型">
                   <button type="button" class="skin-seg-btn" data-act="skin-variant" data-id="classic">经典 · 4px 手臂</button>
                   <button type="button" class="skin-seg-btn" data-act="skin-variant" data-id="slim">纤细 · 3px 手臂</button>
                 </div>
-              </div>
-              <div class="skin-block">
-                <div class="skin-label">皮肤库 <span class="muted" id="skinLibCount"></span></div>
+              </section>
+
+              <section class="skin-group">
+                <h4 class="skin-group-title">皮肤库 <span class="muted" id="skinLibCount"></span></h4>
                 <div class="skin-lib" id="skinLib"></div>
-              </div>
-              <div class="skin-block">
-                <div class="skin-label">游戏内状态</div>
-                <p class="tip mono" id="localSkinState"></p>
+              </section>
+
+              <section class="skin-group">
+                <h4 class="skin-group-title">操作</h4>
+                <div class="skin-actions">
+                  <button type="button" class="btn primary" data-act="pick-skin">从文件导入</button>
+                  <button type="button" class="btn" data-act="enable-local-skin" id="localSkinBtn">在游戏内生效</button>
+                  <button type="button" class="btn ghost hidden" data-act="upload-skin" id="skinUploadBtn">上传到微软</button>
+                  <button type="button" class="btn ghost" data-act="reset-skin">恢复默认</button>
+                </div>
+              </section>
+
+              <section class="skin-group">
+                <h4 class="skin-group-title">状态</h4>
+                <p class="skin-state mono" id="localSkinState"></p>
                 <p class="tip" id="skinHint"></p>
-              </div>
+              </section>
             </div>
           </div>
         </div>

@@ -701,46 +701,101 @@ button.chip.jump:hover b { color: var(--accent-text); }
 
 /* ---------------- 皮肤页 ---------------- */
 /* 左侧大预览 + 右侧模型与皮肤库；舞台用中性渐变，避免把皮肤固有色染色 */
-.skin-wrap { display: flex; gap: var(--sp-5); padding: var(--sp-4) var(--sp-5) var(--sp-5); align-items: flex-start; flex-wrap: wrap; }
-.skin-hero { width: 244px; flex: none; display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); }
-.skin-stage {
-  width: 244px; height: 300px;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: var(--r-xl);
-  border: 1px solid var(--line);
-  background:
-    radial-gradient(120% 80% at 50% 12%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 60%),
-    linear-gradient(180deg, var(--hover), transparent 70%);
-  overflow: hidden;
-  -webkit-backdrop-filter: var(--frost-card);
-  backdrop-filter: var(--frost-card);
+/* 皮肤：左侧大预览 + 右侧设置（参考 HMCL / Prism 的分栏信息密度） */
+.skin-body {
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  gap: var(--sp-5);
+  padding: var(--sp-4) var(--sp-5) var(--sp-5);
+  align-items: start;
 }
-.skin-stage canvas {
-  image-rendering: pixelated;
-  filter: drop-shadow(0 10px 18px var(--skin-shadow));
+@media (max-width: 860px) {
+  .skin-body { grid-template-columns: 1fr; }
 }
-.skin-hero-name { font-size: var(--fs-12); font-weight: 600; letter-spacing: .2px; }
 
-.skin-side { flex: 1; min-width: 300px; display: flex; flex-direction: column; gap: var(--sp-4); }
-.skin-block { display: flex; flex-direction: column; gap: var(--sp-2); }
-.skin-label { font-size: var(--fs-11); color: var(--text-muted); letter-spacing: .3px; }
-.skin-label .muted { font-size: var(--fs-11); }
+.skin-acc { font-size: var(--fs-12); color: var(--text-muted); }
+
+.skin-preview-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+}
+.skin-preview-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 2px;
+  text-align: center;
+}
+.skin-preview-meta b { font-size: var(--fs-13); }
+.skin-preview-meta .muted { font-size: var(--fs-11); }
+
+.skin-stage {
+  width: 100%;
+  height: 288px;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(120% 90% at 50% 18%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%),
+    var(--surface);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-xl);
+  overflow: hidden;
+}
+.skin-stage canvas { width: 100%; height: 100%; }
+
+.skin-config { display: flex; flex-direction: column; gap: var(--sp-4); min-width: 0; }
+
+.skin-group { display: flex; flex-direction: column; gap: var(--sp-2); }
+.skin-group-title {
+  margin: 0;
+  font-size: var(--fs-11);
+  font-weight: 600;
+  letter-spacing: .4px;
+  color: var(--text-muted);
+  text-transform: none;
+}
 
 .skin-seg {
-  display: inline-flex; align-self: flex-start;
-  gap: 2px; padding: 3px;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--surface-3);
+  border: 1px solid var(--line-soft);
   border-radius: var(--r-pill);
-  background: var(--hover);
+  width: fit-content;
 }
 .skin-seg-btn {
-  padding: 7px var(--sp-4);
+  padding: 6px var(--sp-3);
+  border: 0;
+  background: transparent;
   border-radius: var(--r-pill);
+  font-size: var(--fs-12);
   color: var(--text-muted);
-  font-size: var(--fs-12); font-weight: 500;
-  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+  cursor: pointer;
+  transition: background .15s, color .15s, box-shadow .15s;
 }
 .skin-seg-btn:hover { color: var(--text); }
-.skin-seg-btn.active { background: var(--surface); color: var(--accent-text); font-weight: 700; box-shadow: var(--e1); }
+.skin-seg-btn.active {
+  background: var(--surface);
+  color: var(--accent-text);
+  font-weight: 600;
+  box-shadow: var(--e1);
+}
+
+.skin-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.skin-state {
+  margin: 0;
+  font-size: var(--fs-11);
+  color: var(--text-muted);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
 
 .skin-lib { display: grid; grid-template-columns: repeat(auto-fill, 64px); gap: 10px; }
 .skin-tile {
