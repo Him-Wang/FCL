@@ -7,6 +7,24 @@
 > 从旧版升级只需要把新 exe 放到旧 exe 同一个文件夹里运行，第一次启动会自动把 `FMCL\` 迁移成 `FCL\`，账号、版本、皮肤库、Java 都在。
 > 变更细节见 [Releases · v1.1.0](../../releases/tag/v1.1.0)。
 
+### ⭐ 特别致谢
+
+<table>
+<tr>
+<td width="72" align="center" valign="middle">
+  <a href="https://github.com/ImAlexBlock"><img src="https://github.com/ImAlexBlock.png?size=100" width="64" height="64" alt="ImAlexBlock" style="border-radius:50%"></a>
+</td>
+<td>
+
+**感谢 [@ImAlexBlock](https://github.com/ImAlexBlock)** —— <a href="https://github.com/Him-Wang/FCL/pull/1"><b>PR #1</b></a> 的界面重构帮了大忙。
+
+他把样式从「层层覆盖的补丁」重写成 **变量层 + 组件层**（`tokens.css` / `app.css`），修掉了深色模式悬停底色不跟随、JS 强调色被覆盖两个真 bug，把品牌色对比度提到 4.5:1，补齐了整套无障碍（`h1`/`h2`、aria、焦点圈、switch 语义），还写了 `design.md` 设计系统说明。
+**1.3.0 的界面基本建立在他的这次重构之上。**
+
+</td>
+</tr>
+</table>
+
 **FCL**（Fish + MineCraft + Launcher，曾用名 FMCL / 肥鱼启动器）是 Windows 上的 Minecraft 桌面启动器，PCL 风格界面，Electron 构建。
 集成版本与加载器安装、模组与材质包光影、离线皮肤、Java 一键部署，全程中文镜像加速，支持浅色 / 深色 / 跟随系统与自定义背景。
 
@@ -208,7 +226,7 @@ exe 未做代码签名，属于常见误报。可以下载后自行校验 SHA256
 - [BMCLAPI](https://bmclapidoc.bangbang93.com) · 阿里云 / 腾讯云 maven 镜像
 - [Adoptium](https://adoptium.net) · 清华 TUNA · 华为云 OpenJDK 镜像
 - [CustomSkinLoader](https://github.com/xfl03/MCLoader)（内置构建，MIT）
-- **特别感谢 [@ImAlexBlock](https://github.com/ImAlexBlock)**：他在 [PR #1](https://github.com/Him-Wang/FCL/pull/1) 里把样式重构成 `tokens.css` + `app.css` 两层、修掉深色模式悬停底色与 JS 强调色失效两个真 bug、把品牌色对比度提到 4.5:1、重做了无障碍（h1/h2、aria、focus 可见、switch 语义），还写下 `design.md` 设计系统说明 —— 1.3.0 的界面基本建立在这次重构之上。
+- ⭐ **特别感谢 [@ImAlexBlock](https://github.com/ImAlexBlock)**：他在 [PR #1](https://github.com/Him-Wang/FCL/pull/1) 里把样式重构成 `tokens.css` + `app.css` 两层、修掉深色模式悬停底色与 JS 强调色失效两个真 bug、把品牌色对比度提到 4.5:1、重做了无障碍（h1/h2、aria、focus 可见、switch 语义），还写下 `design.md` 设计系统说明 —— 1.3.0 的界面基本建立在这次重构之上。
 
 ## 作者
 
