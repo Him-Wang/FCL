@@ -353,9 +353,9 @@ win.on('closed', () => {
             await shot('classic-light', null);
             await shot('ui-system', '#themeFab');
             await clickMode('dark');
-            await shot('default-dark', null);
+            await shot('dark-launch', null);
             await clickMode('light');
-            await shot('workbuddy-settings', '[data-page="settings"]');
+            await shot('light-settings', '[data-page="settings"]');
           }
         } catch (e) {
           console.log('[smoke] dom error ' + e.message);
