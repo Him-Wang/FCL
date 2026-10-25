@@ -1,0 +1,61 @@
+{
+  "name": "fmcl",
+  "productName": "FMCL",
+  "version": "1.0.0",
+  "description": "FishMineCraftLauncher (FMCL) — PCL 风格的 Minecraft 桌面启动器（Electron）",
+  "main": "main.js",
+  "scripts": {
+    "start": "node start.js",
+    "icon": "node tools/make-icon.js mint",
+    "dist": "tools\\package-win.cmd",
+    "dist:raw": "electron-builder --win --x64"
+  },
+  "author": "Hermintway",
+  "license": "MIT",
+  "build": {
+    "appId": "com.fmcl.launcher",
+    "productName": "FMCL",
+    "directories": {
+      "output": "dist"
+    },
+    "electronDist": "node_modules/electron/dist",
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "FMCL-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "FMCL"
+    },
+    "asarUnpack": [
+      "node_modules/@xmcl/**"
+    ],
+    "files": [
+      "**/*",
+      "!dist/**",
+      "!tools/**",
+      "!shots/**",
+      "!.build-tmp/**",
+      "!FMCL/**",
+      "!*.log",
+      "!*.md",
+      "!*.docx",
+      "build/icon.ico"
+    ]
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^26.18.0"
+  },
+  "dependencies": {
+    "@xmcl/core": "^2.15.1",
+    "@xmcl/user": "^4.4.2"
+  }
+}

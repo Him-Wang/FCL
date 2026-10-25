@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FMCL</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<svg style="display:none" aria-hidden="true">
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4l13 8-13 8V4z"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 20h16"/></symbol>
+  <symbol id="i-puzzle" viewBox="0 0 24 24"><path d="M4 4h7v3a2 2 0 104 0V4h5v6h-3a2 2 0 100 4h3v6h-6v-3a2 2 0 10-4 0v3H4v-7h3a2 2 0 100-4H4z"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><path d="M12 12a4 4 0 100-8 4 4 0 000 8zM4 21c0-4 3.6-6 8-6s8 2 8 6"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h10m4 0h2M4 17h4m4 0h8M15 4v6M9 14v6"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><path d="M12 21a9 9 0 100-18 9 9 0 000 18zM12 11v5m0-8h.01"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><path d="M11 18a7 7 0 100-14 7 7 0 000 14zm5-2l5 5"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3m-8 0l1 13h8l1-13"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 10-2.3 5.7M20 5v6h-6"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-cube" viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9zM4 7.5l8 4.5 8-4.5M12 12v9"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.4 8.2-8 9-4.6-.8-8-4-8-9V6z"/></symbol>
+  <symbol id="i-store" viewBox="0 0 24 24"><path d="M5 8h14l-1.2 12H6.2zM9 8V6a3 3 0 016 0v2"/></symbol>
+  <symbol id="i-fish" viewBox="0 0 64 64"><image width="64" height="64" href="data:image/png;base64,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"/></symbol>
+</svg>
+
+<div class="bg-photo" id="bgPhoto"></div>
+<div class="bg-tint" id="bgTint"></div>
+
+<div class="app">
+  <!-- 自定义标题栏 -->
+  <header class="titlebar">
+    <div class="tb-left">
+      <svg class="ic" style="width:16px;height:16px"><use href="#i-fish"/></svg>
+      <span class="tb-title">FMCL</span>
+      <span class="tb-sub">FishMineCraftLauncher v1.0.0</span>
+    </div>
+    <div class="tb-right">
+      <button class="tb-btn" data-act="min" title="最小化"><i class="tb-ico min"></i></button>
+      <button class="tb-btn" data-act="max" title="最大化"><i class="tb-ico max"></i></button>
+      <button class="tb-btn danger" data-act="close" title="关闭"><i class="tb-ico close"></i>
+        <svg class="tb-ico" viewBox="0 0 10 10" style="width:10px;height:10px"><path d="M0 0l10 10M10 0L0 10" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="body">
+    <!-- 侧边栏 -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo">
+          <svg class="ic" style="width:20px;height:20px"><use href="#i-fish"/></svg>
+        </div>
+        <div class="brand-text">
+          <b>FMCL</b>
+          <span id="brandEnv">检测环境…</span>
+        </div>
+      </div>
+      <nav class="nav">
+        <button class="nav-item active" data-page="launch"><svg class="ic"><use href="#i-play"/></svg><span>启动游戏</span></button>
+        <button class="nav-item" data-page="versions"><svg class="ic"><use href="#i-download"/></svg><span>版本管理</span></button>
+        <button class="nav-item" data-page="store"><svg class="ic"><use href="#i-store"/></svg><span>材质包·光影</span></button>
+        <button class="nav-item" data-page="mods"><svg class="ic"><use href="#i-puzzle"/></svg><span>模组管理</span></button>
+        <button class="nav-item" data-page="accounts"><svg class="ic"><use href="#i-user"/></svg><span>账号管理</span></button>
+        <button class="nav-item" data-page="settings"><svg class="ic"><use href="#i-sliders"/></svg><span>设置</span></button>
+      </nav>
+      <div class="side-foot">
+        <div class="sf-row"><span>当前版本</span><b id="sideVer">-</b></div>
+        <div class="sf-row"><span>当前账号</span><b id="sideUser">-</b></div>
+      </div>
+    </aside>
+
+    <!-- 内容区 -->
+    <main class="content">
+
+      <!-- 启动 -->
+      <section class="page active" id="page-launch">
+        <div class="hero">
+          <button class="hcard" id="verCard" data-act="pick-version">
+            <span class="hcard-label">游戏版本</span>
+            <span class="hcard-value" id="verName">1.20.4</span>
+            <span class="hcard-sub" id="verSub">正式版 · 点击切换</span>
+          </button>
+          <button class="hcard" id="accCard" data-act="pick-account">
+            <span class="hcard-label">游戏账号</span>
+            <span class="hcard-value acc-line"><img id="accAvatar" class="avatar" alt=""><span id="accName">未登录</span></span>
+            <span class="hcard-sub" id="accSub">离线模式 · 点击切换</span>
+          </button>
+        </div>
+
+        <button class="launch-btn" id="launchBtn">
+          <svg class="ic"><use href="#i-play"/></svg>
+          <span id="launchText">启动游戏</span>
+        </button>
+        <div class="progress" id="progress"><div class="progress-bar" id="progressBar"></div></div>
+
+        <div class="env-bar" id="envBar"></div>
+
+        <div class="panel log-panel">
+          <div class="panel-head">
+            <span>启动日志</span>
+            <button class="link-btn" id="clearLog">清空</button>
+          </div>
+          <div class="log" id="log"><div class="log-empty">尚未启动游戏。</div></div>
+        </div>
+
+        <div class="panel news-panel">
+          <div class="panel-head"><span>最新动态</span></div>
+          <ul class="news" id="news"></ul>
+        </div>
+      </section>
+
+      <!-- 版本管理 -->
+      <section class="page" id="page-versions">
+        <div class="toolbar">
+          <div class="tabs" id="verTabs"></div>
+          <div class="search">
+            <svg class="ic"><use href="#i-search"/></svg>
+            <input id="verSearch" placeholder="搜索版本…" />
+          </div>
+        </div>
+        <div class="panel queue-panel hidden" id="queuePanel">
+          <div class="panel-head">
+            <span>下载队列 <b id="queueStat" class="muted"></b></span>
+            <button class="link-btn" data-act="queue-clear">清理已完成</button>
+          </div>
+          <div class="queue-list" id="queueList"></div>
+        </div>
+
+        <div class="panel">
+          <div class="list" id="verList"></div>
+        </div>
+        <div class="hint" id="verLocal"></div>
+      </section>
+
+      <!-- 下载中心 -->
+      <section class="page" id="page-store">
+        <div class="toolbar">
+          <div class="tabs" id="storeTabs">
+            <button class="tab active" data-act="store-tab" data-id="mod">模组</button>
+            <button class="tab" data-act="store-tab" data-id="resourcepack">材质包</button>
+            <button class="tab" data-act="store-tab" data-id="shader">光影</button>
+          </div>
+          <div class="search">
+            <svg class="ic"><use href="#i-search"/></svg>
+            <input id="storeSearch" placeholder="搜索名称，留空显示热门" />
+          </div>
+        </div>
+        <div class="panel hidden" id="packPanel">
+          <div class="panel-head">
+            <span id="packTitle">已安装</span>
+            <span class="row">
+              <button class="btn sm primary" data-act="import-pack" id="packImportBtn">导入本地文件</button>
+              <button class="link-btn" data-act="install-iris" id="irisBtn">安装 Iris（光影前置）</button>
+              <button class="link-btn" data-act="open-packs">打开文件夹</button>
+            </span>
+          </div>
+          <div class="list" id="packList"></div>
+        </div>
+        <div class="toolbar">
+          <label class="mini">MC 版本
+            <select id="storeMc"></select>
+          </label>
+          <label class="mini">加载器
+            <select id="storeLoader">
+              <option value="">任意</option>
+              <option value="fabric">Fabric</option>
+              <option value="forge">Forge</option>
+            </select>
+          </label>
+          <button class="btn primary" data-act="store-search"><svg class="ic"><use href="#i-search"/></svg>搜索</button>
+        </div>
+        <div class="panel">
+          <div class="list" id="storeList"></div>
+        </div>
+        <div class="hint" id="storeHint"></div>
+      </section>
+
+      <!-- 模组管理 -->
+      <section class="page" id="page-mods">
+        <div class="toolbar">
+          <div class="tool-btns">
+            <button class="btn primary" data-act="import-mod"><svg class="ic"><use href="#i-plus"/></svg>导入模组</button>
+            <button class="btn ghost" data-act="browse-mods"><svg class="ic"><use href="#i-folder"/></svg>打开模组文件夹</button>
+            <button class="btn ghost" data-act="refresh-mods"><svg class="ic"><use href="#i-refresh"/></svg>刷新</button>
+          </div>
+          <div class="search">
+            <svg class="ic"><use href="#i-search"/></svg>
+            <input id="modSearch" placeholder="搜索模组…" />
+          </div>
+        </div>
+        <div class="panel">
+          <div class="list" id="modList"></div>
+        </div>
+        <div class="hint" id="modStat"></div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <span>在线模组 <b class="muted" id="modOnlineHint"></b></span>
+            <div class="tabs small" id="modSourceTabs">
+              <button class="tab active" data-act="mod-source" data-id="modrinth">Modrinth</button>
+              <button class="tab" data-act="mod-source" data-id="mcmod">MC百科（中文）</button>
+            </div>
+          </div>
+          <div class="toolbar inner">
+            <div class="search">
+              <svg class="ic"><use href="#i-search"/></svg>
+              <input id="modOnlineSearch" placeholder="搜索模组，留空显示热门" />
+            </div>
+            <label class="mini only-modrinth">MC 版本 <select id="modOnlineMc"></select></label>
+            <label class="mini only-modrinth">加载器
+              <select id="modOnlineLoader">
+                <option value="">任意</option>
+                <option value="fabric">Fabric</option>
+                <option value="forge">Forge</option>
+                <option value="neoforge">NeoForge</option>
+              </select>
+            </label>
+          </div>
+          <div class="quick-tags hidden" id="modCnTags"></div>
+          <div class="list" id="modOnlineList"></div>
+        </div>
+      </section>
+
+      <!-- 账号管理 -->
+      <section class="page" id="page-accounts">
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-head"><span>账号列表</span><span class="muted" id="accCount"></span></div>
+            <div class="list" id="accList"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><span>添加账号</span></div>
+            <div class="tabs small" id="loginTabs">
+              <button class="tab active" data-login="offline">离线登录</button>
+              <button class="tab" data-login="microsoft">微软登录</button>
+            </div>
+            <div class="form" id="loginOffline">
+              <label>玩家名称</label>
+              <input id="offlineName" placeholder="3-16 位字母、数字或下划线" />
+              <p class="tip">离线账号可直接使用，无需验证。</p>
+              <button class="btn primary" data-act="login-offline"><svg class="ic"><use href="#i-plus"/></svg>添加离线账号</button>
+            </div>
+            <div class="form hidden" id="loginMs">
+              <p class="tip">点击后会在浏览器中完成微软账号授权，授权成功自动写入账号列表。</p>
+              <button class="btn primary" data-act="login-ms">使用微软账号登录</button>
+              <div class="ms-code hidden" id="msCode">
+                <p>请在浏览器中打开：<b id="msVerify">https://www.microsoft.com/link</b></p>
+                <p>并输入代码：<b id="msCodeText">ABCD1234</b></p>
+                <p class="tip">等待授权中，完成后会自动写入账号列表。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" id="skinPanel">
+          <input type="file" id="skinFile" accept="image/png,.png" hidden />
+          <div class="panel-head">
+            <span>皮肤 <b class="muted" id="skinWho"></b></span>
+            <span class="row">
+              <button class="btn sm primary" data-act="pick-skin">选择皮肤 PNG</button>
+              <button class="btn sm ghost" data-act="reset-skin">恢复默认</button>
+              <button class="btn sm" data-act="enable-local-skin" id="localSkinBtn">在游戏内生效</button>
+              <button class="btn sm ghost hidden" data-act="upload-skin" id="skinUploadBtn">上传到微软账号</button>
+            </span>
+          </div>
+          <div class="skin-body">
+            <div class="skin-stage"><canvas id="skinPreview" width="176" height="284"></canvas></div>
+            <div class="skin-info">
+              <div class="field">
+                <label>身材</label>
+                <div class="row wrap">
+                  <button class="btn sm" data-act="skin-variant" data-id="classic">经典 · Steve（4px 手臂）</button>
+                  <button class="btn sm" data-act="skin-variant" data-id="slim">纤细 · Alex（3px 手臂）</button>
+                </div>
+              </div>
+              <p class="tip" id="skinHint"></p>
+              <p class="tip mono" id="localSkinState"></p>
+              <div class="field">
+                <label>皮肤库 <span class="muted">（点一下就换，切换即时生效）</span></label>
+                <div class="skin-lib" id="skinLib"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 设置 -->
+      <section class="page" id="page-settings">
+        <div class="panel">
+          <div class="panel-head"><span>启动设置</span></div>
+          <div class="form grid">
+            <div class="field wide">
+              <label>内存分配 <b id="memText">4096 MB</b></label>
+              <input type="range" id="memRange" min="1024" max="16384" step="512" />
+            </div>
+            <div class="field">
+              <label>Java 路径</label>
+              <div class="row">
+                <input id="javaPath" placeholder="留空则自动检测" />
+                <button class="btn ghost" data-act="pick-java">浏览</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>游戏目录</label>
+              <div class="row">
+                <input id="gameDir" placeholder=".minecraft 目录" />
+                <button class="btn ghost" data-act="pick-dir">浏览</button>
+              </div>
+            </div>
+            <div class="field wide">
+              <label>启动器根目录 <span class="muted">（FMCL 文件夹：设置 / 游戏 / Java 都在这里）</span></label>
+              <div class="row">
+                <input id="appRoot" readonly placeholder="与 exe 同级的 FMCL 文件夹" />
+                <button class="btn ghost" data-act="open-root">打开</button>
+                <button class="btn ghost" data-act="pick-root">更改</button>
+              </div>
+              <p class="tip">默认在 exe 旁边的 <code>FMCL\</code>：<code>data\</code> 设置与账号、<code>game\</code> 游戏目录、<code>java\</code> 运行时。改到别的盘后需要重启启动器生效，原有数据会留在旧目录（可手动搬）。</p>
+            </div>
+            <div class="field">
+              <label>窗口宽度</label><input id="winW" type="number" />
+            </div>
+            <div class="field">
+              <label>窗口高度</label><input id="winH" type="number" />
+            </div>
+            <div class="field wide">
+              <label>Java 运行环境 <span class="muted" id="javaState">检测中…</span></label>
+              <div class="row wrap">
+                <button class="btn primary" data-act="deploy-java"><svg class="ic"><use href="#i-download"/></svg>一键部署 Java</button>
+                <button class="btn ghost" data-act="refresh-java">重新检测</button>
+              </div>
+              <p class="tip">未安装 Java 时点「启动游戏」会自动部署（MC 26.x 需要 Java 25，1.20+ 用 Java 21）。</p>
+            </div>
+            <div class="field wide">
+              <label>JVM 参数</label><input id="jvmArgs" placeholder="-XX:+UseG1GC -Dsun.rmi..." />
+            </div>
+            <div class="field wide">
+              <label>微软登录 Client ID <span class="muted">（Azure 应用，免费申请；不填则无法使用微软登录）</span></label>
+              <input id="clientId" placeholder="00000000-0000-0000-0000-000000000000" />
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><span>偏好</span></div>
+          <div class="form grid">
+            <div class="field">
+              <label>主题色</label>
+              <div class="swatches" id="swatches"></div>
+            </div>
+            <div class="field wide">
+              <label>主题预设</label>
+              <div class="row wrap">
+                <button class="btn ghost" data-act="preset" data-id="classic">DeepSeek 经典主题</button>
+                <button class="btn ghost" data-act="preset" data-id="workbuddy">WorkBuddy 经典主题</button>
+                <button class="btn ghost" data-act="preset" data-id="default">默认主题</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>明暗（三套主题都支持）</label>
+              <div class="row">
+                <button class="btn ghost" data-act="mode" data-id="light">浅色</button>
+                <button class="btn ghost" data-act="mode" data-id="dark">深色</button>
+                <button class="btn ghost" data-act="mode" data-id="system">跟随系统</button>
+                <label class="check"><input type="checkbox" id="optFullscreen" /> 启动后全屏</label>
+              </div>
+            </div>
+            <div class="field wide">
+              <div class="row wrap">
+                <label class="check"><input type="checkbox" id="optCloseLauncher" /> 游戏启动后关闭启动器</label>
+                <label class="check"><input type="checkbox" id="optCheckAssets" /> 启动前检查资源完整性</label>
+                <label class="check"><input type="checkbox" id="optIsolate" /> 版本隔离</label>
+              </div>
+            </div>
+            <div class="field wide">
+              <label>背景图片 <span class="muted">（选自己的壁纸；留空就是纯色背景）</span></label>
+              <div class="row">
+                <input id="bgImage" readonly placeholder="未设置，使用主题纯色" />
+                <button class="btn ghost" data-act="pick-bg">选择图片</button>
+                <button class="btn ghost" data-act="clear-bg">清除</button>
+              </div>
+              <input type="file" id="bgFile" accept="image/png,image/jpeg,image/webp,image/bmp" hidden />
+            </div>
+            <div class="field wide">
+              <label>背景不透明度 <b id="opacityText">100%</b></label>
+              <input type="range" id="opacityRange" min="55" max="100" step="5" />
+              <p class="tip">只影响背景（和壁纸的蒙版），文字始终不透明；调到 60~80% 能看到桌面，适合边看攻略边玩。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><span>关于</span></div>
+          <div class="about">
+            <div class="about-logo">
+              <svg class="ic" style="width:30px;height:30px"><use href="#i-fish"/></svg>
+            </div>
+            <div class="about-main">
+              <div class="about-title">FMCL <span class="about-alias">FishMineCraftLauncher</span></div>
+              <p class="muted">v1.0.0 · Electron 桌面版 · PCL 风格界面</p>
+              <p class="muted" id="aboutEnv"></p>
+
+              <div class="credits">
+                <div class="credit">
+                  <span class="credit-role">作者</span>
+                  <b>Hermintway</b>
+                  <span class="muted">项目发起人 · 需求与验收</span>
+                </div>
+                <div class="credit">
+                  <span class="credit-role">共同创造</span>
+                  <b>DeepSeek Harness（DSH）</b>
+                  <span class="muted">架构与代码实现：安装与下载链路、镜像策略、Java 一键部署、下载队列、模组与中文搜索、材质包与光影、皮肤系统、界面与打包发布</span>
+                </div>
+                <div class="credit">
+                  <span class="credit-role">共同创造</span>
+                  <b>WorkBuddy</b>
+                  <span class="muted">初版界面原型：PCL 风格布局、三套主题配色、像素头像与鱼形图标，以及早期 xmcl 接入与交付文档</span>
+                </div>
+              </div>
+
+              <p class="about-note">
+                全名 <b>FishMineCraftLauncher</b>，简称 <b>FMCL</b>（Fish + MineCraft + Launcher）。
+                早期叫「大肥鱼启动器」「肥鱼启动器」，现在统一用 <b>FMCL</b>；肥鱼留作图标上的吉祥物。
+              </p>
+
+              <p class="about-note muted">
+                致谢开源项目：Electron · @xmcl/core · @xmcl/user · Modrinth API · MC百科 · BMCLAPI · Adoptium / 清华镜像 · CustomSkinLoader
+              </p>
+
+              <div class="row">
+                <button class="btn ghost" data-act="open-gamedir">打开游戏目录</button>
+                <button class="btn ghost" id="resetBtn">重置全部数据</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- 通用弹窗（版本切换等） -->
+<div class="modal hidden" id="modal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <span id="modalTitle">选择</span>
+      <button class="link-btn" id="modalClose">关闭</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/avatar.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+# 依赖
+node_modules/
+
+# 构建产物
+dist/
+.build-tmp/
+build/preview-*.png
+build/fish-sprite.png
+build/fish-symbol.svg
+
+# 运行期数据（便携目录，跟 exe 同级生成，不要提交）
+FMCL/
+
+# 开发截图（对外用 docs/screenshots）
+shots/
+
+# 日志与临时文件
+*.log
+*.err
+.fmcl-*
+
+# 系统
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 内部文档（不公开）
+交付文档-DSH.docx
+交付文档-DSH.md
+docs-附录-原始prompt.md
+GITHUB-上传说明.md
