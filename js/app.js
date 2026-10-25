@@ -7,6 +7,19 @@
   const L = window.launcher || null;
   const hasElectron = !!L;
 
+  /* 未捕获错误：写到启动日志里，方便事后排查 */
+  window.__fclErrorHook = true;
+  window.addEventListener('error', (e) => {
+    try {
+      appendLog('error', '未捕获错误：' + (e.message || e.error) + ' @' + (e.filename || '') + ':' + (e.lineno || 0));
+    } catch (err) {}
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    try {
+      appendLog('error', '未处理的 Promise：' + ((e.reason && (e.reason.message || e.reason)) || ''));
+    } catch (err) {}
+  });
+
   /* ---------------- 状态 ---------------- */
   const state = {
     page: 'launch',
@@ -81,6 +94,8 @@
     line.className = 'log-line';
     line.innerHTML = `<span class="t">[${now()}]</span> <span class="lv-${lv}">[${lv.toUpperCase()}]</span> <span class="m">${esc(msg)}</span>`;
     box.appendChild(line);
+    // 最多保留 400 行，长时间挂机也不会一直吃内存
+    while (box.childElementCount > 400) box.firstElementChild.remove();
     box.scrollTop = box.scrollHeight;
   }
 
@@ -171,14 +186,39 @@
     return local.concat(releaseVersions()).filter((v, i, a) => a.indexOf(v) === i).slice(0, 14);
   }
 
+
+  /** 版本类型的中文名 */
+  const TYPE_LABEL = {
+    release: '正式版',
+    snapshot: '快照',
+    old_alpha: '远古 Alpha',
+    old_beta: '远古 Beta',
+    local: '本地',
+    april: '愚人节',
+  };
+
+  /** 愚人节版本（官方清单里类型都是 snapshot，只能按 id 认） */
+  const APRIL_FOOLS = new Set([
+    '2.0', '15w14a', '1.RV-Pre1', '3D Shareware v1.34', '20w14infinite',
+    '22w13oneBlockAtATime', '23w13a_or_b', '24w14potato', '25w14craftmine',
+  ]);
+  function isAprilFools(id) {
+    const s = String(id || '');
+    if (APRIL_FOOLS.has(s)) return true;
+    return /craftmine|potato|oneBlockAtATime|3D Shareware|RV-Pre|20w14infinite|23w13a_or_b/i.test(s);
+  }
+  /** 远古版本：old_alpha / old_beta */
+  function isAncient(v) {
+    return v && (v.type === 'old_alpha' || v.type === 'old_beta');
+  }
   function vanillaList() {
     if (state.manifest) return state.manifest;
-    return VERSIONS.filter((v) => v.type === 'release' || v.type === 'snapshot')
+    return VERSIONS.filter((v) => ['release', 'snapshot', 'old_alpha', 'old_beta'].includes(v.type))
       .map((v) => ({ id: v.id, type: v.type, time: v.date }));
   }
 
   function renderVersions() {
-    const tabs = [['all', '全部'], ['release', '正式版'], ['snapshot', '快照'], ['fabric', 'Fabric'], ['forge', 'Forge'], ['installed', '已安装']];
+    const tabs = [['all', '全部'], ['release', '正式版'], ['snapshot', '快照'], ['ancient', '远古版'], ['april', '愚人节'], ['fabric', 'Fabric'], ['forge', 'Forge'], ['installed', '已安装']];
     $('#verTabs').innerHTML = tabs.map(([k, l]) =>
       `<button class="tab ${verTab === k ? 'active' : ''}" data-act="ver-tab" data-id="${k}">${l}</button>`).join('');
 
@@ -196,7 +236,10 @@
           <button class="btn sm" data-act="install-${verTab}" data-id="${esc(mc)}">安装</button>
         </div>`).join('');
     } else {
-      let list = vanillaList().filter((v) => verTab === 'all' || v.type === verTab);
+      let list = vanillaList();
+      if (verTab === 'ancient') list = list.filter(isAncient);
+      else if (verTab === 'april') list = list.filter((v) => isAprilFools(v.id));
+      else if (verTab !== 'all') list = list.filter((v) => v.type === verTab);
       if (verTab === 'installed') {
         const inst = (state.env ? state.env.installedVersions : state.installed) || [];
         list = inst.map((id) => ({ id, type: 'local', time: '-' }));
@@ -208,7 +251,10 @@
         const inst = isInstalled(v.id);
         const cur = state.version === v.id;
         const task = (state.queue || []).find((t) => t.title === v.id && (t.status === 'queued' || t.status === 'running'));
-        const badge = `<span class="badge ${v.type}">${TYPE_LABEL[v.type] || v.type}</span>`;
+        const april = isAprilFools(v.id) && verTab !== 'april';
+        const badge = april
+          ? '<span class="badge april">愚人节</span>'
+          : `<span class="badge ${v.type}">${TYPE_LABEL[v.type] || v.type}</span>`;
         let act;
         if (task) act = `<button class="btn sm" disabled>${task.status === 'queued' ? '排队中' : taskProgress(task) + '%'}</button>`;
         else if (cur) act = '<button class="btn sm primary" disabled>当前版本</button>';
@@ -220,7 +266,7 @@
         return `<div class="row-item">
           <div class="row-main">
             <div class="row-title">${esc(v.id)} ${badge}</div>
-            <div class="row-sub">${esc(String(v.time || '-').slice(0, 10))}</div>
+            <div class="row-sub">${esc(String(v.time || '-').slice(0, 10))}${isAncient(v) ? ' · 需要 Java 8（旧版游戏不兼容新版 Java）' : ''}${isAprilFools(v.id) ? ' · 愚人节版本，玩法与正式版不同' : ''}</div>
           </div>${act}</div>`;
       }).join('');
     }
@@ -241,25 +287,65 @@
     return 'file:///' + encodeURI(String(p).replace(/\\/g, '/')).replace(/#/g, '%23');
   }
 
+  // 卡片/侧边栏的“原始”颜色（换主题时要重新取）
+  let baseColors = { key: '', card: '', side: '' };
+
+  function rgbaOf(hex, alpha) {
+    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(String(hex).trim());
+    if (!m) return hex;
+    const r = parseInt(m[1], 16);
+    const g = parseInt(m[2], 16);
+    const b = parseInt(m[3], 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha.toFixed(3)})`;
+  }
+
   function applyBackdrop() {
     const s = state.settings;
     const photo = $('#bgPhoto');
+    const blur = $('#bgBlur');
     const tint = $('#bgTint');
     if (!photo || !tint) return;
     const alpha = typeof s.opacity === 'number' ? s.opacity : 1;
+    const url = s.bgImage ? `url("${toFileUrl(s.bgImage)}")` : 'none';
 
-    if (s.bgImage) {
-      photo.style.display = 'block';
-      photo.style.backgroundImage = `url("${toFileUrl(s.bgImage)}")`;
-    } else {
-      photo.style.display = 'none';
-      photo.style.backgroundImage = 'none';
+    for (const el of [photo, blur]) {
+      if (!el) continue;
+      el.style.display = s.bgImage ? 'block' : 'none';
+      el.style.backgroundImage = url;
     }
 
     const rgb = hexToRgb(getComputedStyle(document.body).getPropertyValue('--bg')) || [244, 246, 249];
-    // 有壁纸时蒙版更重一点，保证文字可读；没有壁纸时就是整个窗口的背景透明度
-    const a = s.bgImage ? 0.42 + 0.5 * alpha : alpha;
-    tint.style.background = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${a.toFixed(3)})`;
+    const root = document.documentElement;
+
+    if (s.bgImage) {
+      const imgAlpha = 0.25 + 0.75 * alpha;
+      if (photo) photo.style.opacity = String(imgAlpha.toFixed(3));
+      if (blur) blur.style.opacity = String((imgAlpha * 0.95).toFixed(3));
+      const a = 0.04 + 0.22 * alpha;
+      tint.style.background = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${a.toFixed(3)})`;
+    } else {
+      if (photo) photo.style.opacity = '1';
+      if (blur) blur.style.opacity = '1';
+      const a = 0.22 + 0.78 * alpha;
+      tint.style.background = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${a.toFixed(3)})`;
+    }
+
+    // 卡片与侧边栏也跟着变透：这才是“整窗毛玻璃”的关键（否则只有卡片缝里透桌面，几乎看不出来）
+    const key = document.body.className + '|' + root.style.getPropertyValue('--primary');
+    if (key !== baseColors.key) {
+      root.style.removeProperty('--card');
+      root.style.removeProperty('--side');
+      const cs = getComputedStyle(root);
+      baseColors = {
+        key,
+        card: cs.getPropertyValue('--card').trim(),
+        side: cs.getPropertyValue('--side').trim(),
+      };
+    }
+    const cardA = 0.30 + 0.70 * alpha;
+    const sideA = 0.40 + 0.60 * alpha;
+    root.style.setProperty('--card', rgbaOf(baseColors.card, cardA));
+    root.style.setProperty('--side', rgbaOf(baseColors.side, sideA));
   }
 
   async function pickBackground() {
@@ -736,7 +822,7 @@
     '03-green-hoodie': '绿帽连帽衫',
     '04-red-hoodie': '红卫衣',
     '05-gold-knight': '黄金骑士',
-    '06-fatfish': '肥鱼 · FMCL',
+    '06-fatfish': '肥鱼 · FCL',
   };
   const skinTitle = (name) => SKIN_NAMES[String(name).replace(/\.png$/i, '')] || name;
     function skinOf(a) {
@@ -759,6 +845,8 @@
           ? '选好皮肤和身材后点「上传到微软账号」，官方服务器上立即生效；令牌过期时重新登录一次即可。'
           : '离线账号：点「在游戏内生效」会自动装 CustomSkinLoader（Fabric/Forge 版本）并把皮肤写进它的本地皮肤目录；装好后先进一次游戏让 CSL 生成配置，之后再进游戏就能看到自己的皮肤。';
     }
+    const heroName = $('#skinHeroName');
+    if (heroName) heroName.textContent = a ? a.name + (a.type === 'microsoft' ? '（正版）' : '（离线）') : '未选择账号';
     drawSkin(a);
     refreshLocalSkin();
     renderSkinLib();
@@ -766,18 +854,31 @@
 
   /** 用皮肤贴图拼一个 2D 小人预览（不依赖 three.js） */
   function drawSkin(a) {
-    const canvas = $('#skinPreview');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const W = canvas.width;
-    const H = canvas.height;
-    ctx.clearRect(0, 0, W, H);
-    const S = 6; // 每个皮肤像素放大 6 倍
-    const ox = Math.round((W - 16 * S) / 2);
-    const oy = Math.round((H - 32 * S) / 2);
-    const slim = skinOf(a).variant === 'slim';
+  const canvas = $('#skinPreview');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width;
+  const H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  const S = 6; // 每个皮肤像素放大 6 倍
+  const ox = Math.round((W - 16 * S) / 2);
+  const oy = Math.round((H - 32 * S) / 2);
+  const slim = skinOf(a).variant === 'slim';
+  // 脚下的椭圆阴影
+  {
+    const shY = oy + 32 * S + 4;
+    const g = ctx.createRadialGradient(ox + 8 * S, shY, 2, ox + 8 * S, shY, 10 * S);
+    g.addColorStop(0, 'rgba(15, 23, 42, 0.22)');
+    g.addColorStop(1, 'rgba(15, 23, 42, 0)');
+    ctx.save();
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(ox + 8 * S, shY, 9 * S, 2.4 * S, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
 
-    const placeholder = () => {
+const placeholder = () => {
       const cols = { head: '#e0b48f', body: '#4a7ed8', limb: '#3f6cc0', eye: '#2b3440' };
       ctx.fillStyle = cols.head;
       ctx.fillRect(ox + 4 * S, oy, 8 * S, 8 * S);
@@ -1072,6 +1173,8 @@
         <button class="skin-del" data-act="del-skin" data-id="${esc(it.id)}" title="从皮肤库删除">×</button>
       </div>`).join('');
     box.innerHTML = tiles + `<button class="skin-tile add" data-act="pick-skin" title="从文件添加皮肤">＋</button>`;
+    const cnt = $('#skinLibCount');
+    if (cnt) cnt.textContent = items.length ? `（${items.length} 张）` : '（空）';
   }
 
   async function refreshSkinLib() {
@@ -1832,6 +1935,22 @@
   $('#memRange').addEventListener('input', (e) => {
     state.settings.mem = +e.target.value; save(); renderSettings(); renderEnv();
   });
+  if ($('#optTray')) {
+    $('#optTray').addEventListener('change', async (e) => {
+      const want = e.target.checked;
+      try {
+        const r = await L.setTray(want);
+        if (!r || !r.ok) {
+          toast('保存失败：' + ((r && r.error) || '未知错误'));
+          return;
+        }
+        state.paths = Object.assign({}, state.paths, { minimizeToTray: want });
+        toast(want ? '点 × 现在会最小化到托盘' : '点 × 现在会直接退出', 3000);
+      } catch (err) {
+        toast('设置失败：' + (err.message || err));
+      }
+    });
+  }
   if ($('#skinFile')) $('#skinFile').addEventListener('change', onSkinFileChosen);
   if ($('#bgFile')) $('#bgFile').addEventListener('change', onBgFileChosen);
 
@@ -1924,6 +2043,7 @@
     });
     L.onGameReady(() => {}); // 主进程已经往日志里写了「游戏窗口已就绪」，这里不再重复
     if (L.onQueue) L.onQueue(applyQueueUpdate);
+    if (L.onTrayHint) L.onTrayHint(() => toast('已最小化到托盘，右键托盘图标可以退出', 4200));
     refreshQueue();
     refreshJava();
     refreshSkinLib();

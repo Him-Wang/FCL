@@ -1,8 +1,8 @@
-# FMCL · FishMineCraftLauncher
+# FCL · FishCraftLauncher
 
-> 一个绿色便携的 Minecraft 启动器：双击 exe，一切都在它旁边的 `FMCL\` 文件夹里。
+> 一个绿色便携的 Minecraft 启动器：双击 exe，一切都在它旁边的 `FCL\` 文件夹里。
 
-**FMCL**（Fish + MineCraft + Launcher）是 Windows 上的 Minecraft 桌面启动器，PCL 风格界面，Electron 构建。
+**FCL**（Fish + MineCraft + Launcher，曾用名 FMCL / 肥鱼启动器）是 Windows 上的 Minecraft 桌面启动器，PCL 风格界面，Electron 构建。
 集成版本与加载器安装、模组与材质包光影、离线皮肤、Java 一键部署，全程中文镜像加速，支持 3 套主题与自定义背景。
 
 <p>
@@ -12,7 +12,7 @@
   <img alt="version" src="https://img.shields.io/badge/version-1.0.0-4d6bfe">
 </p>
 
-![FMCL 启动页](docs/screenshots/launch.jpg)
+![FCL 启动页](docs/screenshots/launch.jpg)
 
 ---
 
@@ -30,6 +30,7 @@
 - 只在「已安装」里切换版本，不会误点到没下载的版本
 - 删除版本走回收站，可反悔
 - **下载队列**：最多 3 个任务并发，其余排队，进度、速度、阶段都能看到
+- **远古版本与愚人节版本**：版本列表分「远古版」（old_alpha / old_beta，共 61 个）与「愚人节」（15w14a、3D Shareware、20w14infinite、24w14potato、25w14craftmine 等），并自动为老版本选择 Java 8
 
 ### 模组 / 材质包 / 光影
 
@@ -40,7 +41,7 @@
 
 ### 皮肤
 
-- **6 套内置经典皮肤**（史蒂夫·蓝 / 艾莉克斯·橙 / 绿帽连帽衫 / 红卫衣 / 黄金骑士 / 肥鱼·FMCL），开箱即用
+- **6 套内置经典皮肤**（史蒂夫·蓝 / 艾莉克斯·橙 / 绿帽连帽衫 / 红卫衣 / 黄金骑士 / 肥鱼·FCL），开箱即用
 - 本地 PNG 导入（64×64 / 64×32，放大版自动缩回 64×64）、皮肤库一键切换、Steve / Alex 身材
 - **内置 CustomSkinLoader**：换皮肤时自动把匹配的 CSL 构建装进 `mods\`，离线账号进游戏也能看到自己的皮肤，不需要额外下载
 - 微软账号支持上传皮肤到官方服务器，服务器端立即生效
@@ -48,7 +49,8 @@
 ### 界面
 
 - **3 套主题 × 3 种明暗**：DeepSeek 经典（品牌蓝）/ WorkBuddy 经典（品牌绿）/ 默认主题，浅色、深色、跟随系统
-- **自定义背景图** + 背景透明度：只让背景和蒙版透明，文字始终清晰
+- **自定义背景图 + 磨砂玻璃**：卡片、侧栏、壁纸整体做 backdrop-filter 模糊，Windows 11 上再叠加系统级 Acrylic；背景不透明度 30%–100% 实时生效
+- **托盘常驻**：点 × 最小化到托盘，托盘菜单可显示窗口或退出；可在设置里改回点 × 直接退出
 - ColorOS 风格的大圆角、柔和投影、胶囊控件
 
 > 截图使用「默认主题」；设置里可切换 DeepSeek 经典 / WorkBuddy 经典两套预设，配浅色、深色、跟随系统。
@@ -66,10 +68,10 @@
 
 ### 绿色便携
 
-运行后**不往 C 盘用户目录写任何东西**，全部收在 exe 同级的 `FMCL\`：
+运行后**不往 C 盘用户目录写任何东西**，全部收在 exe 同级的 `FCL\`：
 
 ```text
-FMCL\
+FCL\
 ├─ data\    设置 / 账号 / 皮肤库 / 浏览器缓存
 ├─ game\    游戏目录（versions / mods / resourcepacks / shaderpacks / assets / libraries / options.txt）
 ├─ java\    一键部署的 Java 运行时
@@ -78,13 +80,13 @@ FMCL\
 ```
 
 - 整包拷到 U 盘或另一台电脑即可继续用，配置跟着走
-- 想放别的盘：设置 → 「启动器根目录」→ 更改（写入 `FMCL\config.json`，重启生效）
+- 想放别的盘：设置 → 「启动器根目录」→ 更改（写入 `FCL\config.json`，重启生效）
 
 ---
 
 ## 下载
 
-到 [Releases](../../releases) 下载 `FMCL-<版本>-x64.exe`，双击运行即可。
+到 [Releases](../../releases) 下载 `FCL-<版本>-x64.exe`，双击运行即可。
 
 - 单文件便携版，**无需安装**，首次启动会自解压到 `%TEMP%`（退出后自动清理）
 - 首次启动没有 Java 也能用：点「启动游戏」会自动部署 Java 25（约 56 MB，走清华镜像）
@@ -93,8 +95,8 @@ FMCL\
 ## 从源码运行
 
 ```bash
-git clone <your-repo-url> FMCL
-cd FMCL
+git clone <your-repo-url> FCL
+cd FCL
 npm install
 npm start
 ```
@@ -105,7 +107,7 @@ npm start
 
 ```bash
 npm run dist
-# 产物：dist/FMCL-1.0.0-x64.exe
+# 产物：dist/FCL-1.0.0-x64.exe
 ```
 
 > 打包脚本 `tools\package-win.cmd` 会把临时目录、electron 二进制、镜像都固定在项目内，避免写到系统临时目录。
@@ -146,8 +148,16 @@ tools/               图标生成、皮肤生成、CSL 拉取、打包脚本
 
 ## 配置
 
-- **微软登录**：点「使用微软账号登录」会弹出**内嵌的微软登录窗口**，登完自动回到启动器并添加账号，**不需要自己注册 Azure 应用**（默认使用公开的 Xbox 客户端 ID）。设置里仍保留 Client ID 输入框，想换成自己的应用时可以填（走设备码流程）。
+- **微软登录**：点「使用微软账号登录」弹出**内嵌的微软登录窗口**，登完自动回到启动器并添加账号，**不需要自己注册 Azure 应用**。设置里仍保留 Client ID 输入框，想换成自己的应用时可填（走设备码流程）。
 - **内存 / JVM 参数 / 窗口尺寸**：设置页可调，默认 4 GB。
+
+## 稳定性
+
+- **单实例**：重复双击只会把已有窗口拉到前台，不会出现两个进程抢同一个数据目录
+- **崩溃留痕**：主进程异常、渲染进程 / GPU 子进程意外退出、窗口意外关闭，全部写进 `FCL\logs\app.log`
+- **下载韧性**：连接 10s / 空闲 20s 超时、镜像回退、原子 `.part` 写入、SHA-1 校验；遇到杀软占用（EPERM / EBUSY）自动退避重试
+- **安装校验**：Java / 版本文件下载并解压后会校验关键文件是否存在，缺文件自动清理重试
+- **日志上限**：日志面板最多保留 400 行，长时间挂机不会持续吃内存
 
 ## 常见问题
 
@@ -172,7 +182,7 @@ exe 未做代码签名，属于常见误报。可以下载后自行校验 SHA256
 <details>
 <summary>为什么只有一个 exe？卸载后残留什么？</summary>
 
-便携版不写注册表、不装服务，删除 exe 与它旁边的 `FMCL\` 即彻底卸载。
+便携版不写注册表、不装服务，删除 exe 与它旁边的 `FCL\` 即彻底卸载。
 </details>
 
 ## 已知限制

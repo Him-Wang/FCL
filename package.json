@@ -1,8 +1,8 @@
 {
-  "name": "fmcl",
-  "productName": "FMCL",
-  "version": "1.0.1",
-  "description": "FishMineCraftLauncher (FMCL) — PCL 风格的 Minecraft 桌面启动器（Electron）",
+  "name": "fcl",
+  "productName": "FCL",
+  "version": "1.1.0",
+  "description": "FishCraftLauncher (FCL) — PCL 风格的 Minecraft 桌面启动器（Electron）",
   "main": "main.js",
   "scripts": {
     "start": "node start.js",
@@ -13,8 +13,8 @@
   "author": "Hermintway",
   "license": "MIT",
   "build": {
-    "appId": "com.fmcl.launcher",
-    "productName": "FMCL",
+    "appId": "com.fcl.launcher",
+    "productName": "FCL",
     "directories": {
       "output": "dist"
     },
@@ -24,7 +24,7 @@
         "portable"
       ],
       "icon": "build/icon.ico",
-      "artifactName": "FMCL-${version}-${arch}.${ext}"
+      "artifactName": "FCL-${version}-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -32,7 +32,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "FMCL"
+      "shortcutName": "FCL"
     },
     "asarUnpack": [
       "node_modules/@xmcl/**"
@@ -43,7 +43,7 @@
       "!tools/**",
       "!shots/**",
       "!.build-tmp/**",
-      "!FMCL/**",
+      "!FCL/**",
       "!docs/**",
       "!*.pdf",
       "!*.log",

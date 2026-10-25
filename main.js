@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -14,18 +14,18 @@ const javaRuntime = require('./lib/java');
 const localskin = require('./lib/localskin');
 
 /* ============================================================
- * 便携根目录：exe 旁边的 FMCL\ 文件夹
- *   FMCL\data   —— 设置 / 账号 / 皮肤库（Electron userData）
- *   FMCL\game   —— 游戏目录（versions / mods / assets / libraries / options.txt）
- *   FMCL\java   —— 一键部署的 Java 运行时
- * 也可以在设置里改成别的盘（写入 FMCL\config.json 的 root，重启生效）。
+ * 便携根目录：exe 旁边的 FCL\ 文件夹
+ *   FCL\data   —— 设置 / 账号 / 皮肤库（Electron userData）
+ *   FCL\game   —— 游戏目录（versions / mods / assets / libraries / options.txt）
+ *   FCL\java   —— 一键部署的 Java 运行时
+ * 也可以在设置里改成别的盘（写入 FCL\config.json 的 root，重启生效）。
  * ============================================================ */
-const APP_DIR_NAME = 'FMCL';
+const APP_DIR_NAME = 'FCL';
 
 function canWrite(dir) {
   try {
     fs.mkdirSync(dir, { recursive: true });
-    const probe = path.join(dir, '.fmcl-write-test');
+    const probe = path.join(dir, '.fcl-write-test');
     fs.writeFileSync(probe, '1');
     fs.unlinkSync(probe);
     return true;
@@ -73,7 +73,7 @@ try {
   for (const d of [DATA_DIR, GAME_DIR, JAVA_DIR, LOG_DIR, path.join(LOG_DIR, 'crash'), TEMP_DIR, path.join(DATA_DIR, 'Cache')]) {
     fs.mkdirSync(d, { recursive: true });
   }
-  // 设置 / 账号 / 皮肤 / Chromium 缓存全部落在 FMCL\data，不再写 C 盘用户目录
+  // 设置 / 账号 / 皮肤 / Chromium 缓存全部落在 FCL\data，不再写 C 盘用户目录
   app.setPath('userData', DATA_DIR);
   app.setPath('sessionData', DATA_DIR);
   try {
@@ -85,7 +85,7 @@ try {
   try {
     app.setPath('temp', TEMP_DIR);
   } catch (e) {}
-  // 子进程（游戏 / Forge 安装器 / 解压）也用 FMCL\temp，别往系统临时目录丢东西
+  // 子进程（游戏 / Forge 安装器 / 解压）也用 FCL\temp，别往系统临时目录丢东西
   process.env.TEMP = TEMP_DIR;
   process.env.TMP = TEMP_DIR;
   app.commandLine.appendSwitch('disk-cache-dir', path.join(DATA_DIR, 'Cache'));
@@ -126,8 +126,8 @@ function migrateLegacyData() {
   }
 
   // 3) 旧 .minecraft 不自动搬（1GB+ 的文件，误操作代价太大）：
-  //    如果 FMCL\game 还是空的，就继续沿用旧的 .minecraft 作为默认游戏目录，
-  //    用户可以在设置里点「迁移到 FMCL\game」再显式搬过来。
+  //    如果 FCL\game 还是空的，就继续沿用旧的 .minecraft 作为默认游戏目录，
+  //    用户可以在设置里点「迁移到 FCL\game」再显式搬过来。
 }
 
 try {
@@ -144,14 +144,48 @@ let UI_CFG = {};
 try {
   if (fs.existsSync(rootPointer)) UI_CFG = JSON.parse(fs.readFileSync(rootPointer, 'utf8')) || {};
 } catch (e) {}
-const USE_TRANSPARENT = !!UI_CFG.transparent;
+const USE_TRANSPARENT = UI_CFG.transparent !== false; // 默认开启；只有配置文件里显式写 false 才用不透明窗口
+
+/* 设置里切换「窗口背景透明」：写进 config.json，重启后生效 */
+ipcMain.handle('app:set-tray', async (_e, val) => {
+  try {
+    fs.mkdirSync(defaultRoot, { recursive: true });
+    let cfg = {};
+    try {
+      cfg = JSON.parse(fs.readFileSync(rootPointer, 'utf8')) || {};
+    } catch (e) {}
+    cfg.minimizeToTray = !!val;
+    fs.writeFileSync(rootPointer, JSON.stringify(cfg, null, 2), 'utf8');
+    UI_CFG.minimizeToTray = cfg.minimizeToTray;
+    return { ok: true, minimizeToTray: cfg.minimizeToTray };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+});
+
+ipcMain.handle('app:set-transparent', async (_e, val) => {
+  try {
+    fs.mkdirSync(defaultRoot, { recursive: true });
+    let cfg = {};
+    try {
+      cfg = JSON.parse(fs.readFileSync(rootPointer, 'utf8')) || {};
+    } catch (e) {}
+    cfg.transparent = !!val;
+    fs.writeFileSync(rootPointer, JSON.stringify(cfg, null, 2), 'utf8');
+    return { ok: true, needRestart: true, transparent: cfg.transparent };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+});
 
 // 受限环境（无 GPU 驱动）自动回退到软件渲染，而不是硬性禁用 GPU
-if (process.env.FMCL_SOFTWARE_RENDER === '1') {
+if (process.env.FCL_SOFTWARE_RENDER === '1') {
   app.disableHardwareAcceleration();
 }
 
 let win = null;
+let tray = null;
+let quitting = false; // 真正退出（而不是隐藏到托盘）
 let gameProcess = null;
 let gameWindowReady = false;
 
@@ -174,7 +208,7 @@ function send(channel, payload) {
 }
 function log(lv, msg) {
   send('mc:log', { lv, msg });
-  // 同时落到 FMCL\logs\app.log，窗口关掉之后也能查
+  // 同时落到 FCL\logs\app.log，窗口关掉之后也能查
   try {
     fs.appendFileSync(path.join(LOG_DIR, 'app.log'), `[${new Date().toISOString()}] [${lv}] ${msg}\n`, 'utf8');
   } catch (e) {}
@@ -194,6 +228,12 @@ process.on('unhandledRejection', (reason) => {
 });
 
 function createWindow() {
+  if (win && !win.isDestroyed()) {
+    if (win.isMinimized()) win.restore();
+    win.show();
+    win.focus();
+    return win;
+  }
   win = new BrowserWindow({
     width: 1020,
     height: 680,
@@ -204,7 +244,7 @@ function createWindow() {
     icon: path.join(__dirname, 'build', 'icon.ico'),
     backgroundColor: USE_TRANSPARENT ? '#00000000' : '#f4f6f9',
     transparent: USE_TRANSPARENT,
-    title: 'FMCL',
+    title: 'FCL',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -212,15 +252,38 @@ function createWindow() {
     }
   });
 
-  win.loadFile(path.join(__dirname, 'index.html'));
+  /* 磨砂：Windows 11 上直接让系统给窗口做 Acrylic（桌面也会被模糊） */
+if (process.platform === 'win32') {
+  try {
+    const build = Number((os.release().split('.')[2] || '0'));
+    if (build >= 22000 && typeof win.setBackgroundMaterial === 'function') {
+      win.setBackgroundMaterial('acrylic');
+      const got = typeof win.getBackgroundMaterial === 'function' ? win.getBackgroundMaterial() : 'n/a';
+      log('info', '已启用系统亚克力（背景材质：' + got + '）');
+    } else {
+      log('info', '系统版本 ' + os.release() + ' 不支持亚克力，改用 CSS 磨砂');
+    }
+  } catch (e) {
+    log('warn', '启用亚克力失败，改用 CSS 磨砂：' + (e.message || e));
+  }
+}
 
-/* 闪退排查：把渲染进程/GPU 子进程的意外退出、窗口关闭都记进 FMCL\logs\app.log */
+win.webContents.on('preload-error', (_e, p, err) => {
+  log('error', 'preload 加载失败：' + p + ' ' + (err && err.message));
+});
+
+win.loadFile(path.join(__dirname, 'index.html'));
+
+/* 闪退排查：把渲染进程/GPU 子进程的意外退出、窗口关闭都记进 FCL\logs\app.log */
 win.webContents.on('render-process-gone', (_e, details) => {
   log('error', `渲染进程退出：${details.reason}（exitCode ${details.exitCode}）`);
 });
 win.webContents.on('unresponsive', () => log('warn', '窗口无响应'));
 win.webContents.on('responsive', () => log('info', '窗口恢复响应'));
-win.on('closed', () => log('warn', '主窗口已关闭'));
+win.on('closed', () => {
+  log('warn', '主窗口已关闭');
+  win = null;
+});
 
   if (process.env.CL_SMOKE) {
     win.webContents.on('console-message', (_e, level, message, line, sourceId) => {
@@ -637,6 +700,18 @@ win.on('closed', () => log('warn', '主窗口已关闭'));
   });
   ipcMain.on('win:maximize', () => (win.isMaximized() ? win.unmaximize() : win.maximize()));
   ipcMain.on('win:close', () => win.close());
+  // 托盘关闭策略：点 × 只是隐藏，托盘菜单里才有「退出」
+  win.on('close', (e) => {
+    if (quitting) return;
+    if (UI_CFG.minimizeToTray === false) return;
+    e.preventDefault();
+    win.hide();
+    if (tray && !tray.__hinted) {
+      tray.__hinted = true;
+      log('info', '已最小化到托盘（右键托盘图标可退出）');
+      send('tray:hint', true);
+    }
+  });
 
   win.on('maximize', () => send('win:state', true));
   win.on('unmaximize', () => send('win:state', false));
@@ -649,6 +724,23 @@ async function findJava(custom) {
 }
 
 /** 版本要求的 Java 大版本：读已下载的版本 JSON，缺省 21 */
+/** 版本 json 没写 javaVersion 时，按版本号猜需要的 Java 大版本：
+ *  远古版（alpha/beta）和老版本只能跑 Java 8；1.17+ 要 17，1.20.5+ 要 21 */
+function guessJavaMajor(versionId) {
+  const s = String(versionId || '');
+  const m = /^1\.(\d+)(?:\.(\d+))?/.exec(s);
+  if (m) {
+    const minor = Number(m[1]);
+    const patch = Number(m[2] || 0);
+    if (minor >= 20 && patch >= 5) return 21;
+    if (minor >= 17) return 17;
+    return 8;
+  }
+  const snap = /^(\d{2})w\d{2}[a-z]?$/i.exec(s);
+  if (snap) return Number(snap[1]) >= 21 ? 17 : 8;
+  return 8; // old_alpha / old_beta 之类
+}
+
 async function requiredJavaMajor(gameDir, versionId) {
   try {
     const p = path.join(gameDir, 'versions', versionId, `${versionId}.json`);
@@ -656,7 +748,7 @@ async function requiredJavaMajor(gameDir, versionId) {
     if (j.javaVersion && j.javaVersion.majorVersion) return j.javaVersion.majorVersion;
     if (j.inheritsFrom) return requiredJavaMajor(gameDir, j.inheritsFrom);
   } catch (e) {}
-  return 21;
+  return guessJavaMajor(versionId);
 }
 
 ipcMain.handle('java:detect', async (_e, opt) => {
@@ -995,7 +1087,7 @@ ipcMain.handle('skins:apply', async (_e, req) => {
   return { synced: true, autoInstalled, localFirst: patch ? patch.localFirst : undefined };
 });
 
-/** 旧 .minecraft：FMCL\game 还是空的就先沿用，等用户显式迁移 */
+/** 旧 .minecraft：FCL\game 还是空的就先沿用，等用户显式迁移 */
 function legacyMinecraftDir() {
   const old = path.join(app.getPath('appData') || path.join(os.homedir(), 'AppData', 'Roaming'), '.minecraft');
   try {
@@ -1004,14 +1096,14 @@ function legacyMinecraftDir() {
   return '';
 }
 
-/** 把旧 .minecraft 搬进 FMCL\game（同盘 rename 瞬间完成，跨盘退回复制） */
+/** 把旧 .minecraft 搬进 FCL\game（同盘 rename 瞬间完成，跨盘退回复制） */
 async function migrateMinecraft() {
   const old = legacyMinecraftDir();
   if (!old) return { ok: false, reason: '没有可迁移的旧 .minecraft' };
   try {
     if (fs.existsSync(GAME_DIR)) {
       const left = fs.readdirSync(GAME_DIR).filter((n) => n !== 'data');
-      if (left.length) return { ok: false, reason: 'FMCL\\game 里已有文件，为安全起见没有自动合并' };
+      if (left.length) return { ok: false, reason: 'FCL\\game 里已有文件，为安全起见没有自动合并' };
       fs.rmdirSync(GAME_DIR);
     }
     try {
@@ -1038,6 +1130,8 @@ ipcMain.handle('app:root', async () => ({
   pointer: rootPointer,
   defaultRoot,
   portable: !!process.env.PORTABLE_EXECUTABLE_DIR,
+  transparent: USE_TRANSPARENT,
+  minimizeToTray: UI_CFG.minimizeToTray !== false,
 }));
 
 ipcMain.handle('app:set-root', async (_e, req) => {
@@ -1056,6 +1150,19 @@ ipcMain.handle('app:set-root', async (_e, req) => {
 });
 
 ipcMain.handle('app:restart', async () => {
+  // 便携版（electron-builder portable）不能直接用 app.relaunch()：
+  // 它重启的是 %TEMP% 里那份自解压副本，而退出时这个临时目录会被清掉，
+  // 新进程再去 require 就会报 ENOENT package.json。这里改为重启用户手里那个 exe。
+  const portable = process.env.PORTABLE_EXECUTABLE_FILE;
+  if (portable && fs.existsSync(portable)) {
+    try {
+      spawn(portable, [], { detached: true, stdio: 'ignore' }).unref();
+      app.exit(0);
+      return true;
+    } catch (e) {
+      log('warn', '重启便携版失败，尝试普通重启：' + (e.message || e));
+    }
+  }
   app.relaunch();
   app.exit(0);
   return true;
@@ -1223,8 +1330,8 @@ ipcMain.handle('mc:launch', async (_e, req) => {
     resourcePath: req.gameDir,
     javaPath: java.path,
     version: req.version,
-    launcherName: 'FMCL',
-    launcherBrand: 'FMCL',
+    launcherName: 'FCL',
+    launcherBrand: 'FCL',
     minMemory: Math.min(1024, req.maxMemory || 4096),
     maxMemory: req.maxMemory || 4096,
     extraJVMArgs: (req.jvmArgs || '').split(/\s+/).filter(Boolean)
@@ -1565,14 +1672,72 @@ ipcMain.handle('shell:open', async (_e, target) => {
   }
 });
 
-app.whenReady().then(() => {
+/** 创建托盘图标与右键菜单 */
+function createTray() {
+  if (tray) return;
+  try {
+    let img = nativeImage.createFromPath(path.join(__dirname, 'build', 'icon.ico'));
+    if (img.isEmpty()) img = nativeImage.createFromPath(path.join(__dirname, 'build', 'icon-preview-32.png'));
+    tray = new Tray(img.resize({ width: 16, height: 16 }));
+    tray.setToolTip('FCL · FishCraftLauncher');
+    const show = () => {
+      if (!win) return;
+      if (win.isMinimized()) win.restore();
+      win.show();
+      win.focus();
+    };
+    const menu = Menu.buildFromTemplate([
+      { label: '显示主窗口', click: show },
+      { label: '隐藏到托盘', click: () => win && win.hide() },
+      { type: 'separator' },
+      { label: '打开游戏目录', click: () => shell.openPath(GAME_DIR) },
+      { label: '打开启动器目录', click: () => shell.openPath(ROOT) },
+      { type: 'separator' },
+      {
+        label: '退出 FCL',
+        click: () => {
+          quitting = true;
+          app.quit();
+        },
+      },
+    ]);
+    tray.setContextMenu(menu);
+    tray.on('click', show);
+    tray.on('double-click', show);
+  } catch (e) {
+    log('warn', '创建托盘图标失败：' + (e.message || e));
+  }
+}
+
+/* 单实例：第二个实例只把已有窗口拉到前台，避免两个进程抢同一个数据目录 */
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (!win || win.isDestroyed()) {
+      createWindow();
+      return;
+    }
+    if (win.isMinimized()) win.restore();
+    if (!win.isVisible()) win.show();
+    win.focus();
+  });
+}
+
+if (gotLock) app.whenReady().then(() => {
   // Java 一键部署的落地根目录：<userData>/runtime
   javaRuntime.init(JAVA_DIR);
   seedBuiltinSkins();
   createWindow();
+  createTray();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+});
+
+app.on('before-quit', () => {
+  quitting = true;
 });
 
 app.on('window-all-closed', () => {
@@ -1581,6 +1746,24 @@ app.on('window-all-closed', () => {
 });
 
 /* GPU / 网络等子进程非正常退出时留个记录（这类问题以前表现为“闪退”） */
+/* 安全/稳定：页面里不允许开新窗口，外链交给系统浏览器 */
+app.on('web-contents-created', (_e, contents) => {
+  contents.setWindowOpenHandler(({ url }) => {
+    try {
+      if (url && !url.startsWith('file:')) shell.openExternal(url);
+    } catch (err) {}
+    return { action: 'deny' };
+  });
+  contents.on('will-navigate', (event, url) => {
+    if (url && !url.startsWith('file:')) {
+      event.preventDefault();
+      try {
+        shell.openExternal(url);
+      } catch (err) {}
+    }
+  });
+});
+
 app.on('child-process-gone', (_e, details) => {
   log('error', `子进程退出：${details.type} / ${details.reason}（exitCode ${details.exitCode}）`);
 });

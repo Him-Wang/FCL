@@ -44,11 +44,19 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* 背景层：壁纸 + 主题色蒙版（文字始终不透明，只有背景可以半透明） */
+/* 背景层：壁纸 + 主题色蒙版（文字始终不透明，只有背景可以半透明）
+   bg-blur 用 cover + 模糊铺底（避免上下黑边），bg-photo 用 contain 完整显示原图 */
+.bg-blur {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  display: none;
+  background-position: center; background-size: cover; background-repeat: no-repeat;
+  filter: blur(28px) saturate(1.1) brightness(.82);
+  transform: scale(1.1);
+}
 .bg-photo {
   position: fixed; inset: 0; z-index: 0; pointer-events: none;
-  background-position: center; background-size: cover; background-repeat: no-repeat;
   display: none;
+  background-position: center; background-size: contain; background-repeat: no-repeat;
 }
 .bg-tint { position: fixed; inset: 0; z-index: 0; pointer-events: none; background: var(--bg); }
 .app { position: relative; z-index: 1; background: transparent; }
@@ -866,3 +874,87 @@ select { padding: 0 12px; }
 
 
 
+
+/* ==========================================================================
+   皮肤页（参考 PCL2）：左侧大预览 + 右侧模型/皮肤库，去掉棋盘格
+   ========================================================================== */
+.skin-wrap { display: flex; gap: 20px; padding: 18px 20px 20px; align-items: flex-start; flex-wrap: wrap; }
+.skin-hero { width: 244px; flex: none; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.skin-stage {
+  width: 244px; height: 300px; border-radius: 18px; border: 1px solid var(--cos-line);
+  background:
+    radial-gradient(120% 80% at 50% 12%, color-mix(in srgb, var(--primary) 10%, transparent), transparent 60%),
+    linear-gradient(180deg, var(--hover), transparent 70%);
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+.skin-stage canvas { image-rendering: pixelated; filter: drop-shadow(0 10px 18px rgba(15, 23, 42, .16)); }
+.skin-hero-name { font-size: 12.5px; font-weight: 600; letter-spacing: .2px; }
+.skin-pick-btn { width: 100%; height: 40px; border-radius: 14px; }
+
+.skin-side { flex: 1; min-width: 300px; display: flex; flex-direction: column; gap: 16px; }
+.skin-block { display: flex; flex-direction: column; gap: 8px; }
+.skin-label { font-size: 11.5px; color: var(--muted); letter-spacing: .3px; }
+.skin-label .muted { font-size: 11px; }
+
+.skin-seg { display: inline-flex; background: var(--hover); border-radius: 999px; padding: 3px; gap: 2px; align-self: flex-start; }
+.skin-seg-btn {
+  border: 0; background: transparent; color: var(--muted); cursor: pointer;
+  padding: 7px 16px; border-radius: 999px; font-size: 12px; font-weight: 500;
+  font-family: inherit; transition: background .15s, color .15s, box-shadow .15s;
+}
+.skin-seg-btn:hover { color: var(--text); }
+.skin-seg-btn.active { background: var(--card); color: var(--primary); font-weight: 700; box-shadow: var(--shadow-1); }
+
+.skin-lib { display: grid; grid-template-columns: repeat(auto-fill, 64px); gap: 10px; }
+.skin-tile {
+  width: 64px; height: 64px; border-radius: 12px; overflow: hidden; position: relative; cursor: pointer;
+  border: 2px solid transparent; background: var(--hover); padding: 0;
+  transition: transform .12s, border-color .15s, box-shadow .15s;
+}
+.skin-tile:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--primary) 45%, transparent); }
+.skin-tile.on { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-s); }
+.skin-tile img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
+.skin-tile .skin-del {
+  position: absolute; top: 2px; right: 2px; width: 16px; height: 16px; line-height: 14px; text-align: center;
+  border-radius: 50%; border: 0; background: rgba(0, 0, 0, .55); color: #fff; font-size: 11px; cursor: pointer;
+  opacity: 0; transition: opacity .15s;
+}
+.skin-tile:hover .skin-del { opacity: 1; }
+.skin-tile.add {
+  display: flex; align-items: center; justify-content: center; font-size: 20px; color: var(--muted);
+  background: none; border-style: dashed; border-width: 2px; border-color: var(--cos-line); font-family: inherit;
+}
+.skin-tile.add:hover { color: var(--primary); border-color: var(--primary); }
+
+body.dark .skin-stage canvas { filter: drop-shadow(0 10px 20px rgba(0, 0, 0, .55)); }
+
+/* 远古版 / 愚人节版徽章 */
+.badge.old_alpha, .badge.old_beta { background: rgba(120, 120, 140, .16); color: #6b7280; }
+.badge.april { background: rgba(236, 72, 153, .14); color: #db2777; }
+body.dark .badge.old_alpha, body.dark .badge.old_beta { background: rgba(160, 170, 190, .18); color: #b6c0d0; }
+body.dark .badge.april { background: rgba(244, 114, 182, .18); color: #f9a8d4; }
+
+/* ==========================================================================
+   磨砂玻璃：卡片 / 侧栏 / 标题栏 / 弹窗对身后内容做 backdrop-filter 模糊
+   （Windows 11 上主进程还会额外开启 DWM Acrylic，桌面本身也会被模糊）
+   ========================================================================== */
+.panel,
+.hcard,
+.modal-card,
+.titlebar,
+.sidebar,
+.chip,
+.tab,
+.btn,
+.search,
+.field input,
+.form input,
+.log,
+.skin-stage {
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  backdrop-filter: blur(18px) saturate(1.25);
+}
+.log {
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+  backdrop-filter: blur(10px) saturate(1.1);
+}
