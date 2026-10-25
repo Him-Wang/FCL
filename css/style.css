@@ -958,3 +958,64 @@ body.dark .badge.april { background: rgba(244, 114, 182, .18); color: #f9a8d4; }
   -webkit-backdrop-filter: blur(10px) saturate(1.1);
   backdrop-filter: blur(10px) saturate(1.1);
 }
+
+
+/* ==========================================================================
+   圆润化 + 磨砂对齐（合并自多轮补丁，这里只保留最终生效的一套）
+   ========================================================================== */
+:root {
+  --cos-card: 24px;
+  --cos-ctl: 16px;
+  --cos-window: 18px;   /* 整窗四角半径，背景层与窗口一致 */
+}
+
+/* ---- 整窗四角 ----
+   窗口本身是透明的，圆角处透出桌面。
+   .bg-* 是 position:fixed 的图层，只有当 body 成为其包含块时
+   才会被 body 的圆角 + overflow 裁剪；blur 滤镜向外扩散，
+   仅靠图层自身的 border-radius 盖不住四角，所以 body 上加 transform。 */
+html, body {
+  background: transparent;
+  border-radius: var(--cos-window);
+  overflow: hidden;
+}
+body {
+  transform: translateZ(0);
+}
+.app {
+  border-radius: var(--cos-window);
+  overflow: hidden;
+}
+.bg-blur, .bg-photo, .bg-tint {
+  border-radius: var(--cos-window);
+}
+
+/* ---- 卡片与面板 ---- */
+.panel { border-radius: 26px; }
+.hcard { border-radius: 28px; }
+.modal-card { border-radius: 28px; }
+.panel-head {
+  border-top-left-radius: 26px;
+  border-top-right-radius: 26px;
+}
+
+/* ---- 按钮与输入 ---- */
+.btn { border-radius: 16px; }
+.btn.sm { border-radius: 14px; }
+.icon-btn { border-radius: 12px; }
+.field input, .form input, select,
+input[type="text"], input[type="number"], input:not([type]) { border-radius: 16px; }
+.launch-btn { border-radius: 24px; }
+.search { border-radius: 999px; }
+.tab, .chip, .skin-seg { border-radius: 999px; }
+.pick-row { border-radius: 16px; }
+
+/* ---- 侧栏与品牌 ---- */
+.nav-item { border-radius: 16px; }
+.brand-logo { border-radius: 12px; }
+.about-logo { border-radius: 14px; }
+
+/* ---- 皮肤页 / 区块 ---- */
+.skin-stage { border-radius: 24px; }
+.skin-tile { border-radius: 16px; }
+.log, .queue-list { border-radius: 18px; }

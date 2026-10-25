@@ -2052,6 +2052,29 @@ const placeholder = () => {
     L.onGameReady(() => {}); // 主进程已经往日志里写了「游戏窗口已就绪」，这里不再重复
     if (L.onQueue) L.onQueue(applyQueueUpdate);
     if (L.onTrayHint) L.onTrayHint(() => toast('已最小化到托盘，右键托盘图标可以退出', 4200));
+    if (L.onAlreadyRunning) L.onAlreadyRunning(() => toast('FCL 已在运行 —— 已把窗口切回前台，不用重复打开', 4200));
+
+    // 第一次点 × 时，由主进程通知界面弹窗询问：最小化到托盘 or 直接退出
+    if (L.onAskClose) {
+      L.onAskClose(() => {
+        openModal('关闭 FCL', `
+          <p style="margin:0 0 10px">要把 FCL <b>最小化到托盘</b>，还是<b>直接退出</b>？</p>
+          <p class="tip" style="margin:0 0 14px">最小化后可从任务栏托盘的小鱼图标重新打开；游戏正在运行时建议最小化。这个选择以后可以在「设置 → 偏好」里修改。</p>
+          <label class="check" style="margin-bottom:14px"><input type="checkbox" id="closeRemember" checked /> 记住我的选择，以后不再询问</label>
+          <div class="row" style="justify-content:flex-end;gap:8px">
+            <button class="btn" data-act="close-quit">直接退出</button>
+            <button class="btn primary" data-act="close-tray">最小化到托盘</button>
+          </div>
+        `);
+        const ask = (minimize) => {
+          const remember = $('#closeRemember') ? $('#closeRemember').checked : true;
+          closeModal();
+          if (L.closeChoice) L.closeChoice({ minimize, remember });
+        };
+        $('#modalBody [data-act="close-tray"]').forEach((el) => (el.onclick = () => ask(true)));
+        $('#modalBody [data-act="close-quit"]').forEach((el) => (el.onclick = () => ask(false)));
+      });
+    }
     refreshQueue();
     refreshJava();
     refreshSkinLib();
