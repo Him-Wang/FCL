@@ -396,6 +396,10 @@
       state.paths = null;
     }
     if ($('#appRoot')) $('#appRoot').value = (state.paths && state.paths.root) || '';
+    if (state.paths && state.paths.version) {
+      const sub = document.querySelector('.tb-sub');
+      if (sub) sub.textContent = 'FishCraftLauncher v' + state.paths.version;
+    }
     return state.paths;
   }
 
@@ -1266,6 +1270,10 @@ const placeholder = () => {
     $('#gameDir').value = gameDir();
     if ($('#appRoot')) $('#appRoot').value = (state.paths && state.paths.root) || '';
     if ($('#bgImage')) $('#bgImage').value = s.bgImage ? String(s.bgImage).split(/[\\/]/).pop() : '';
+    if (state.paths && state.paths.version) {
+      const sub = document.querySelector('.tb-sub');
+      if (sub) sub.textContent = 'FishCraftLauncher v' + state.paths.version;
+    }
     $('#winW').value = s.winW; $('#winH').value = s.winH;
     $('#jvmArgs').value = s.jvm;
     $('#clientId').value = s.clientId;

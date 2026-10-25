@@ -436,6 +436,11 @@ win.on('closed', () => {
             await cap(name);
           };
           await run(`(() => { const s = document.createElement('style'); s.textContent = '.toast{display:none!important}'; document.head.appendChild(s); })()`);
+          await run(`document.querySelector('[data-act="preset"][data-id="default"]') && document.querySelector('[data-act="preset"][data-id="default"]').click()`);
+          await run(`document.querySelector('[data-act="mode"][data-id="light"]') && document.querySelector('[data-act="mode"][data-id="light"]').click()`);
+          await new Promise((r) => setTimeout(r, 900));
+          try { win.setAlwaysOnTop(true, 'screen-saver'); win.focus(); win.moveTop(); } catch (e) {}
+          await new Promise((r) => setTimeout(r, 600));
           await go('launch', 'clean-1-launch');
           await go('versions', 'clean-2-versions');
           await go('mods', 'clean-3-mods');
@@ -1130,6 +1135,7 @@ ipcMain.handle('app:root', async () => ({
   pointer: rootPointer,
   defaultRoot,
   portable: !!process.env.PORTABLE_EXECUTABLE_DIR,
+  version: app.getVersion(),
   transparent: USE_TRANSPARENT,
   minimizeToTray: UI_CFG.minimizeToTray !== false,
 }));

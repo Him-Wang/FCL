@@ -33,3 +33,6 @@ GITHUB-上传说明.md
 # 提交用的说明文档（不公开）
 docs/*.pdf
 docs/*.docx
+
+# 运行期数据（FCL 便携目录）
+FCL/
