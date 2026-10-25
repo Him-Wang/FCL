@@ -117,7 +117,7 @@ FCL\
 - 单文件便携版，**无需安装**，首次启动会自解压到 `%TEMP%`（退出后自动清理）
 - 首次启动没有 Java 也能用：点「启动游戏」会自动部署 Java 25（约 56 MB，走清华镜像）
 - 未做代码签名，Windows 可能提示「已保护你的电脑」→ 更多信息 → 仍要运行
-- **macOS**：到 [v1.0.0-macos](https://github.com/Him-Wang/FCL/releases/tag/v1.0.0-macos) 下载 dmg（Apple Silicon 选 arm64、Intel 选 x64），首次打开需右键 →「打开」；不会装的话看 [macOS 安装指南](docs/macOS-安装指南.md)
+- **macOS**：到 [v1.0.0-macos](https://github.com/Him-Wang/FCL/releases/tag/v1.0.0-macos) 下载 dmg（Apple Silicon——含 M1～M5 及以后——选 arm64，Intel 选 x64），首次打开需右键 →「打开」；不会装的话看 [macOS 安装指南](docs/macOS-安装指南.md)
 
 ## 从源码运行
 
