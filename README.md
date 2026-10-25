@@ -33,6 +33,7 @@
   <img alt="electron" src="https://img.shields.io/badge/Electron-33.4-47848f">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-00c29a">
   <img alt="version" src="https://img.shields.io/badge/version-1.3.0-4d6bfe">
+  <a href="https://github.com/Him-Wang/FCL/graphs/contributors"><img alt="contributors" src="https://img.shields.io/github/contributors/Him-Wang/FCL?color=2b7bf0&label=contributors"></a>
 </p>
 
 ![FCL 启动页](docs/screenshots/launch.jpg)
