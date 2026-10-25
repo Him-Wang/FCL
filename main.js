@@ -1642,7 +1642,7 @@ ipcMain.handle('ms:poll', async (_e, req) => ms.pollLogin(req.clientId, req.devi
 
 /* ---------------- 微软登录：内嵌登录窗口（玩家不用申请 Azure 应用） ---------------- */
 let msLoginWin = null;
-ipcMain.handle('ms:login', async () => {
+async function openMicrosoftLogin() {
   if (msLoginWin) throw new Error('登录窗口已经打开了');
   return await new Promise((resolve, reject) => {
     const authWin = new BrowserWindow({
@@ -1661,6 +1661,10 @@ ipcMain.handle('ms:login', async () => {
       },
     });
     msLoginWin = authWin;
+    // 放行导航：登录全程都是 https 页面跳转，不能被主窗口那套外链拦截挡掉
+    try {
+      authWin.webContents.__fclAllowNav = true;
+    } catch (e) {}
     let settled = false;
 
     const finish = (fn, arg) => {
@@ -1714,7 +1718,9 @@ ipcMain.handle('ms:login', async () => {
 
     authWin.loadURL(ms.buildAuthUrl()).catch((e) => bad(e));
   });
-});
+}
+
+ipcMain.handle('ms:login', () => openMicrosoftLogin());
 
 /* ---------------- 其它 ---------------- */
 ipcMain.handle('dialog:openFolder', async () => {
@@ -1795,6 +1801,7 @@ if (gotLock) app.whenReady().then(() => {
   seedBuiltinSkins();
   createWindow();
   createTray();
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -1810,15 +1817,20 @@ app.on('window-all-closed', () => {
 });
 
 /* GPU / 网络等子进程非正常退出时留个记录（这类问题以前表现为“闪退”） */
-/* 安全/稳定：页面里不允许开新窗口，外链交给系统浏览器 */
+/* 安全/稳定：主窗口里不允许开新窗口、不允许跳外链（外链交给系统浏览器）。
+   注意：微软登录窗口必须放行 —— 它整段流程都是在 https 页面之间跳转，
+   被这里拦掉就会表现为“点了微软登录没反应/白窗”。窗口创建后会给
+   它的 webContents 打上 __fclAllowNav 标记。 */
 app.on('web-contents-created', (_e, contents) => {
   contents.setWindowOpenHandler(({ url }) => {
+    if (contents.__fclAllowNav) return { action: 'allow' };
     try {
       if (url && !url.startsWith('file:')) shell.openExternal(url);
     } catch (err) {}
     return { action: 'deny' };
   });
   contents.on('will-navigate', (event, url) => {
+    if (contents.__fclAllowNav) return;
     if (url && !url.startsWith('file:')) {
       event.preventDefault();
       try {
