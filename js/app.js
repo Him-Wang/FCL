@@ -36,7 +36,7 @@
     settings: {
       mem: 4096, javaPath: '', gameDir: '', winW: 1280, winH: 720,
       jvm: '-XX:+UseG1GC -XX:+ParallelRefProcEnabled',
-      color: '#2b7bf0', dark: false, mode: 'light', theme: '', clientId: '',
+      dark: false, mode: 'light', clientId: '',
       fullscreen: false, closeLauncher: false, checkAssets: true, isolate: true, opacity: 1
     },
     env: null,
@@ -101,7 +101,12 @@
 
   function switchPage(p) {
     state.page = p;
-    $$('.nav-item').forEach((b) => b.classList.toggle('active', b.dataset.page === p));
+    $$('.nav-item').forEach((b) => {
+      const on = b.dataset.page === p;
+      b.classList.toggle('active', on);
+      if (on) b.setAttribute('aria-current', 'page');
+      else b.removeAttribute('aria-current');
+    });
     $$('.page').forEach((s) => s.classList.toggle('active', s.id === 'page-' + p));
     $('.content').scrollTop = 0;
   }
@@ -129,9 +134,9 @@
       chips.push(`<span class="chip">${dot(e.gameDirExists)}游戏目录 <b>${e.gameDirExists ? '已就绪' : '不存在'}</b></span>`);
       chips.push(`<span class="chip">内存 <b>${e.totalMemGB} GB</b></span>`);
       if (e.installedVersions && e.installedVersions.length) chips.push(`<span class="chip">本地版本 <b>${e.installedVersions.length} 个</b></span>`);
-      chips.push(`<button class="chip jump" data-act="open-sub" data-id="saves">打开存档目录 <b>${(e.saves || []).length} 个</b></button>`);
-      chips.push(`<button class="chip jump" data-act="open-sub" data-id="mods">打开模组目录 <b>${(e.localMods || []).length} 个</b></button>`);
-      chips.push(`<button class="chip jump" data-act="open-sub" data-id=".">打开游戏目录</button>`);
+      chips.push(`<button type="button" class="chip jump" data-act="open-sub" data-id="saves">打开存档目录 <b>${(e.saves || []).length} 个</b></button>`);
+      chips.push(`<button type="button" class="chip jump" data-act="open-sub" data-id="mods">打开模组目录 <b>${(e.localMods || []).length} 个</b></button>`);
+      chips.push(`<button type="button" class="chip jump" data-act="open-sub" data-id=".">打开游戏目录</button>`);
     } else {
       chips.push(`<span class="chip">${dot(false)}<b>演示模式（未连接本机）</b></span>`);
     }
@@ -220,7 +225,7 @@
   function renderVersions() {
     const tabs = [['all', '全部'], ['release', '正式版'], ['snapshot', '快照'], ['ancient', '远古版'], ['april', '愚人节'], ['fabric', 'Fabric'], ['forge', 'Forge'], ['installed', '已安装']];
     $('#verTabs').innerHTML = tabs.map(([k, l]) =>
-      `<button class="tab ${verTab === k ? 'active' : ''}" data-act="ver-tab" data-id="${k}">${l}</button>`).join('');
+      `<button type="button" class="tab ${verTab === k ? 'active' : ''}" data-act="ver-tab" data-id="${k}">${l}</button>`).join('');
 
     const q = ($('#verSearch').value || '').toLowerCase();
     let rows = '';
@@ -233,7 +238,7 @@
             <div class="row-title">${esc(mc)} <span class="badge ${verTab}">${verTab === 'fabric' ? 'Fabric' : 'Forge'}</span></div>
             <div class="row-sub">安装适用于 ${esc(mc)} 的最新${verTab === 'fabric' ? ' Fabric Loader' : ' Forge'}</div>
           </div>
-          <button class="btn sm" data-act="install-${verTab}" data-id="${esc(mc)}">安装</button>
+          <div class="row-actions"><button type="button" class="btn sm" data-act="install-${verTab}" data-id="${esc(mc)}">安装</button></div>
         </div>`).join('');
     } else {
       let list = vanillaList();
@@ -256,12 +261,12 @@
           ? '<span class="badge april">愚人节</span>'
           : `<span class="badge ${v.type}">${TYPE_LABEL[v.type] || v.type}</span>`;
         let act;
-        if (task) act = `<button class="btn sm" disabled>${task.status === 'queued' ? '排队中' : taskProgress(task) + '%'}</button>`;
-        else if (cur) act = '<button class="btn sm primary" disabled>当前版本</button>';
-        else if (inst) act = `<button class="btn sm" data-act="use-version" data-id="${esc(v.id)}">设为当前</button>`;
-        else act = `<button class="btn sm" data-act="install-vanilla" data-id="${esc(v.id)}">下载</button>`;
+        if (task) act = `<button type="button" class="btn sm" disabled>${task.status === 'queued' ? '排队中' : taskProgress(task) + '%'}</button>`;
+        else if (cur) act = '<button type="button" class="btn sm primary" disabled>当前版本</button>';
+        else if (inst) act = `<button type="button" class="btn sm" data-act="use-version" data-id="${esc(v.id)}">设为当前</button>`;
+        else act = `<button type="button" class="btn sm" data-act="install-vanilla" data-id="${esc(v.id)}">下载</button>`;
         if (inst && !task) {
-          act += `<button class="icon-btn danger" data-act="del-version" data-id="${esc(v.id)}" title="删除这个版本"><svg class="ic"><use href="#i-trash"/></svg></button>`;
+          act += `<button type="button" class="icon-btn danger" data-act="del-version" data-id="${esc(v.id)}" aria-label="删除版本 ${esc(v.id)}" title="删除这个版本"><svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg></button>`;
         }
         return `<div class="row-item">
           <div class="row-main">
@@ -315,7 +320,8 @@
     }
 
     const rgb = hexToRgb(getComputedStyle(document.body).getPropertyValue('--bg')) || [244, 246, 249];
-    const root = document.documentElement;
+    // 变量声明在 body 上，覆盖也必须写在 body 上（写在 <html> 上会被 body.dark 盖掉）
+    const root = document.body;
 
     if (s.bgImage) {
       const imgAlpha = 0.25 + 0.75 * alpha;
@@ -330,22 +336,22 @@
       tint.style.background = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${a.toFixed(3)})`;
     }
 
-    // 卡片与侧边栏也跟着变透：这才是“整窗毛玻璃”的关键（否则只有卡片缝里透桌面，几乎看不出来）
-    const key = document.body.className + '|' + root.style.getPropertyValue('--primary');
+    // 卡片与侧边栏也跟着变透：这才是「整窗毛玻璃」的关键（否则只有卡片缝里透桌面，几乎看不出来）
+    const key = document.body.className + '|' + root.style.getPropertyValue('--accent');
     if (key !== baseColors.key) {
-      root.style.removeProperty('--card');
-      root.style.removeProperty('--side');
+      root.style.removeProperty('--surface');
+      root.style.removeProperty('--surface-2');
       const cs = getComputedStyle(root);
       baseColors = {
         key,
-        card: cs.getPropertyValue('--card').trim(),
-        side: cs.getPropertyValue('--side').trim(),
+        card: cs.getPropertyValue('--surface').trim(),
+        side: cs.getPropertyValue('--surface-2').trim(),
       };
     }
     const cardA = 0.30 + 0.70 * alpha;
     const sideA = 0.40 + 0.60 * alpha;
-    root.style.setProperty('--card', rgbaOf(baseColors.card, cardA));
-    root.style.setProperty('--side', rgbaOf(baseColors.side, sideA));
+    root.style.setProperty('--surface', rgbaOf(baseColors.card, cardA));
+    root.style.setProperty('--surface-2', rgbaOf(baseColors.side, sideA));
   }
 
   async function pickBackground() {
@@ -418,8 +424,8 @@
           <p class="confirm-title">根目录已改为 <b>${esc(r.root)}</b></p>
           <p class="tip">新的 <code>data\</code>、<code>game\</code>、<code>java\</code> 会在重启后建到新位置；原有数据仍留在旧目录，可手动搬过去。</p>
           <div class="confirm-actions">
-            <button class="btn ghost" data-act="modal-close">稍后重启</button>
-            <button class="btn primary" data-act="restart-app">立即重启</button>
+            <button type="button" class="btn ghost" data-act="modal-close">稍后重启</button>
+            <button type="button" class="btn primary" data-act="restart-app">立即重启</button>
           </div>
         </div>`);
     } catch (e) {
@@ -436,13 +442,15 @@
     if (list.length) {
       $('#modList').innerHTML = list.map((m) => `
         <div class="row-item">
-          <div class="mod-icon" style="background:${modColor(m.name)}">${esc(m.name.slice(0, 1).toUpperCase())}</div>
+          <div class="mod-icon" aria-hidden="true">${esc(m.name.slice(0, 1).toUpperCase())}</div>
           <div class="row-main">
             <div class="row-title">${esc(m.name.replace(/\.jar$/, ''))} ${m.enabled ? '' : '<span class="badge">已禁用</span>'}</div>
             <div class="row-sub">${m.size} KB · 本机 mods 目录</div>
           </div>
-          <div class="switch ${m.enabled ? 'on' : ''}" data-act="real-mod-toggle" data-id="${esc(m.name)}"></div>
-          <button class="icon-btn" data-act="real-mod-del" data-id="${esc(m.name)}"><svg class="ic"><use href="#i-trash"/></svg></button>
+          <div class="row-actions">
+            <button type="button" class="switch ${m.enabled ? 'on' : ''}" role="switch" aria-checked="${m.enabled ? 'true' : 'false'}" aria-label="启用 ${esc(m.name)}" data-act="real-mod-toggle" data-id="${esc(m.name)}"></button>
+            <button type="button" class="icon-btn" data-act="real-mod-del" data-id="${esc(m.name)}" aria-label="删除模组 ${esc(m.name)}" title="删除"><svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg></button>
+          </div>
         </div>`).join('');
     } else if (real.length) {
       $('#modList').innerHTML = '<div class="empty">没有匹配的模组</div>';
@@ -479,7 +487,7 @@
     $('#modCnTags').classList.toggle('hidden', !cn);
     $('#modOnlineSearch').placeholder = cn ? '输入中文模组名，如：机械动力' : '搜索模组，留空显示热门';
     if (cn) {
-      $('#modCnTags').innerHTML = CN_HOT_TAGS.map((t) => `<button class="tag-btn" data-act="cn-tag" data-id="${esc(t)}">${esc(t)}</button>`).join('');
+      $('#modCnTags').innerHTML = CN_HOT_TAGS.map((t) => `<button type="button" class="tag-btn" data-act="cn-tag" data-id="${esc(t)}">${esc(t)}</button>`).join('');
     }
   }
 
@@ -502,9 +510,9 @@
             <div class="cn-desc">${esc(it.desc || '（MC百科暂无摘要）')}</div>
             <div class="cn-meta">MC百科 · 快照 ${esc(it.time || '-')}</div>
           </div>
-          <div class="cn-actions">
-            <button class="btn sm ghost" data-act="cn-open" data-id="${i}">百科</button>
-            <button class="btn sm" data-act="cn-download" data-id="${i}">一键下载</button>
+          <div class="row-actions">
+            <button type="button" class="btn sm ghost" data-act="cn-open" data-id="${i}">百科</button>
+            <button type="button" class="btn sm" data-act="cn-download" data-id="${i}">一键下载</button>
           </div>
         </div>`).join('');
       return;
@@ -523,7 +531,7 @@
           <div class="row-sub">下载 ${fmtNum(it.downloads)} · 支持 ${esc((it.versions || []).slice(-3).join(' / ') || '多版本')}</div>
           <div class="store-desc">${esc(it.desc || '')}</div>
         </div>
-        <button class="btn sm" data-act="mod-download" data-id="${esc(it.id)}" data-title="${esc(it.title)}">一键下载</button>
+        <div class="row-actions"><button type="button" class="btn sm" data-act="mod-download" data-id="${esc(it.id)}" data-title="${esc(it.title)}">一键下载</button></div>
       </div>`).join('');
   }
 
@@ -635,10 +643,6 @@
     }
   }
 
-  function modColor(name) {
-    return `hsl(${hashStr(name) % 360} 55% 46%)`;
-  }
-
   /* ---------------- 下载中心（Modrinth） ---------------- */
   const fmtNum = (n) => (n >= 1e8 ? (n / 1e8).toFixed(1) + '亿' : n >= 1e4 ? (n / 1e4).toFixed(1) + '万' : String(n || 0));
 
@@ -654,7 +658,7 @@
     // 模组下载已经统一放在「模组管理」页，这里只保留材质包 / 光影，避免两处重复
     if (state.store.type === 'mod') state.store.type = 'resourcepack';
     $('#storeTabs').innerHTML = [['resourcepack', '材质包'], ['shader', '光影']]
-      .map(([k, l]) => `<button class="tab ${state.store.type === k ? 'active' : ''}" data-act="store-tab" data-id="${k}">${l}</button>`).join('');
+      .map(([k, l]) => `<button type="button" class="tab ${state.store.type === k ? 'active' : ''}" data-act="store-tab" data-id="${k}">${l}</button>`).join('');
     renderPacks();
 
     if (!items.length) {
@@ -671,7 +675,7 @@
           <div class="row-sub">下载 ${fmtNum(it.downloads)} · 支持 ${esc((it.versions || []).slice(-4).join(' / ') || '多版本')}</div>
           <div class="store-desc">${esc(it.desc || '')}</div>
         </div>
-        <button class="btn sm" data-act="store-install" data-id="${esc(it.id)}" data-title="${esc(it.title)}">${btnLabel}</button>
+        <div class="row-actions"><button type="button" class="btn sm" data-act="store-install" data-id="${esc(it.id)}" data-title="${esc(it.title)}">${btnLabel}</button></div>
       </div>`).join('');
   }
 
@@ -708,8 +712,10 @@
           <div class="row-title">${esc(p.name.replace(/\.(zip|jar)$/i, ''))} ${on ? '<span class="badge on">已启用</span>' : ''}</div>
           <div class="row-sub">${p.size} KB · ${isShader ? 'shaderpacks' : 'resourcepacks'}</div>
         </div>
-        ${isShader ? '' : `<div class="switch ${on ? 'on' : ''}" data-act="pack-toggle" data-id="${esc(p.name)}" title="${on ? '停用' : '启用'}"></div>`}
-        <button class="icon-btn danger" data-act="pack-del" data-id="${esc(p.name)}" title="删除"><svg class="ic"><use href="#i-trash"/></svg></button>
+        <div class="row-actions">
+          ${isShader ? '' : `<button type="button" class="switch ${on ? 'on' : ''}" role="switch" aria-checked="${on ? 'true' : 'false'}" aria-label="${on ? '停用' : '启用'} ${esc(p.name)}" data-act="pack-toggle" data-id="${esc(p.name)}"></button>`}
+          <button type="button" class="icon-btn danger" data-act="pack-del" data-id="${esc(p.name)}" aria-label="删除 ${esc(p.name)}" title="删除"><svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg></button>
+        </div>
       </div>`;
     }).join('');
   }
@@ -1172,11 +1178,11 @@ const placeholder = () => {
     const cur = skinOf(curAcc()).dataUrl || '';
     const thumbs = await Promise.all(items.map(faceThumb));
     const tiles = items.map((it, i) => `
-      <div class="skin-tile ${cur === it.dataUrl ? 'on' : ''}" data-act="use-skin" data-id="${esc(it.id)}" title="${esc(skinTitle(it.name))}（点击更换）">
-        <img src="${thumbs[i]}" alt="">
-        <button class="skin-del" data-act="del-skin" data-id="${esc(it.id)}" title="从皮肤库删除">×</button>
+      <div class="skin-tile ${cur === it.dataUrl ? 'on' : ''}">
+        <button type="button" class="skin-pick" aria-pressed="${cur === it.dataUrl ? 'true' : 'false'}" data-act="use-skin" data-id="${esc(it.id)}" title="${esc(skinTitle(it.name))}（点击更换）"><img src="${thumbs[i]}" alt="${esc(skinTitle(it.name))}"></button>
+        <button type="button" class="skin-del" data-act="del-skin" data-id="${esc(it.id)}" aria-label="从皮肤库删除 ${esc(skinTitle(it.name))}" title="从皮肤库删除">×</button>
       </div>`).join('');
-    box.innerHTML = tiles + `<button class="skin-tile add" data-act="pick-skin" title="从文件添加皮肤">＋</button>`;
+    box.innerHTML = tiles + `<button type="button" class="skin-tile add" data-act="pick-skin" title="从文件添加皮肤" aria-label="从文件添加皮肤">＋</button>`;
     const cnt = $('#skinLibCount');
     if (cnt) cnt.textContent = items.length ? `（${items.length} 张）` : '（空）';
   }
@@ -1242,9 +1248,11 @@ const placeholder = () => {
           <b>${esc(a.name)}</b>
           <span>${a.type === 'microsoft' ? '微软账号' : '离线账号'} · ${esc((a.uuid || '').slice(0, 18))}</span>
         </div>
-        ${a.id === state.currentAccount ? '<button class="btn sm primary" disabled>使用中</button>'
-          : `<button class="btn sm" data-act="use-acc" data-id="${esc(a.id)}">使用</button>`}
-        <button class="icon-btn" data-act="del-acc" data-id="${esc(a.id)}"><svg class="ic"><use href="#i-trash"/></svg></button>
+        <div class="row-actions">
+          ${a.id === state.currentAccount ? '<span class="badge">使用中</span>'
+            : `<button type="button" class="btn sm" data-act="use-acc" data-id="${esc(a.id)}">使用</button>`}
+          <button type="button" class="icon-btn" data-act="del-acc" data-id="${esc(a.id)}" aria-label="删除账号 ${esc(a.name)}" title="删除账号"><svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg></button>
+        </div>
       </div>`).join('') : '<div class="empty">还没有账号，请在右侧添加。</div>';
     // 账号列表里的头像优先用皮肤头部
     $('#accCount').textContent = `${state.accounts.length} 个`;
@@ -1252,13 +1260,6 @@ const placeholder = () => {
   }
 
   /* ---------------- 设置页 ---------------- */
-  const COLORS = ['#2b7bf0', '#4d6bfe', '#7c4dff', '#e2483d', '#2fa84f', '#e0a300', '#00a8a8'];
-  const PRESETS = {
-    classic: { color: '#4d6bfe', theme: 'classic', label: 'DeepSeek 经典主题' },
-    workbuddy: { color: '#00c29a', theme: 'workbuddy', label: 'WorkBuddy 经典主题' },
-    default: { color: '#2b7bf0', theme: '', label: '默认主题' }
-  };
-
   function renderSettings() {
     const s = state.settings;
     $('#memRange').value = s.mem;
@@ -1281,17 +1282,103 @@ const placeholder = () => {
     $('#optCloseLauncher').checked = s.closeLauncher;
     $('#optCheckAssets').checked = s.checkAssets;
     $('#optIsolate').checked = s.isolate;
-    $('#swatches').innerHTML = COLORS.map((c) =>
-      `<button class="swatch ${c === s.color ? 'on' : ''}" style="background:${c}" data-act="set-color" data-id="${c}"></button>`).join('');
-
-    const cur = s.theme || 'default';
-    $$('[data-act="preset"]').forEach((b) => b.classList.toggle('active', b.dataset.id === cur));
-    $$('[data-act="mode"]').forEach((b) => b.classList.toggle('active', b.dataset.id === (s.mode || 'light')));
+    renderThemeFab();
     renderJavaState();
+  }
+
+  /* ---------------- 外观切换：右下角悬浮按钮 ---------------- */
+  const MODE_ORDER = ['light', 'dark', 'system'];
+  const MODE_META = {
+    light: { icon: '#i-sun', label: '浅色' },
+    dark: { icon: '#i-moon', label: '深色' },
+    system: { icon: '#i-auto', label: '跟随系统' }
+  };
+
+  function renderThemeFab() {
+    const fab = $('#themeFab');
+    if (!fab) return;
+    const mode = MODE_ORDER.includes(state.settings.mode) ? state.settings.mode : 'light';
+    const meta = MODE_META[mode];
+    const use = $('#themeFabIcon');
+    if (use) use.setAttribute('href', meta.icon);
+    const label = mode === 'system' ? `跟随系统（当前${sysDark() ? '深色' : '浅色'}）` : meta.label;
+    fab.setAttribute('aria-label', `切换明暗外观，当前为${label}`);
+    fab.setAttribute('title', `切换明暗外观 · ${label}`);
+    fab.dataset.mode = mode;
+  }
+
+  function cycleMode() {
+    const cur = MODE_ORDER.includes(state.settings.mode) ? state.settings.mode : 'light';
+    const next = MODE_ORDER[(MODE_ORDER.indexOf(cur) + 1) % MODE_ORDER.length];
+    state.settings.mode = next;
+    state.settings.modeTouched = true;
+    save();
+    applyTheme();
+    renderSettings();
+    const label = MODE_META[next].label;
+    toast('外观：' + label + (next === 'system' ? `（系统为${sysDark() ? '深色' : '浅色'}）` : ''));
   }
 
   const sysMedia = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   const sysDark = () => !!(sysMedia && sysMedia.matches);
+
+  /* ---- 强调色派生：填充色与文字色分开，各自保证 ≥ 4.5:1 ----
+     唯一强调色固定为品牌蓝，不再提供色相选择。
+     --accent-fill 与 --accent-text 由本函数按当前表面推导，CSS 不硬编码。 */
+  const MIN_CONTRAST = 4.5;
+  const ON_DARK = '#0b0f14';
+  const ON_LIGHT = '#ffffff';
+  const ACCENT = '#2b7bf0';
+
+  function relLum(hex) {
+    const n = String(hex).replace('#', '');
+    const ch = n.length === 3 ? n.split('').map((c) => c + c) : n.match(/../g) || ['00', '00', '00'];
+    const [r, g, b] = ch.slice(0, 3).map((h) => parseInt(h, 16) / 255)
+      .map((v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  }
+  function contrast(a, b) {
+    const la = relLum(a), lb = relLum(b);
+    return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+  }
+  function mixHex(a, b, t) {
+    const pa = String(a).replace('#', '').match(/../g).map((h) => parseInt(h, 16));
+    const pb = String(b).replace('#', '').match(/../g).map((h) => parseInt(h, 16));
+    return '#' + pa.map((v, i) => Math.round(v * t + pb[i] * (1 - t)).toString(16).padStart(2, '0')).join('');
+  }
+  /** 在 accent 基础上向 toward 方向逐步混合，直到与 against 的对比度达标 */
+  function pushContrast(color, against, toward, min) {
+    const target = min || MIN_CONTRAST;
+    for (let i = 0; i <= 50; i++) {
+      const t = 1 - i * 0.02;
+      const c = i === 0 ? color : mixHex(color, toward, t);
+      if (contrast(c, against) >= target) return c;
+    }
+    return toward;
+  }
+
+  function applyAccent(color, dark) {
+    // 变量声明在 body 上，覆盖也必须写在 body 上：写在 <html> 上会被 body.dark 的声明盖掉
+    const host = document.body;
+    const surface = (getComputedStyle(host).getPropertyValue('--surface') || '#ffffff').trim();
+    const on = dark ? ON_DARK : ON_LIGHT;
+    const away = dark ? '#ffffff' : '#000000';
+    // 填充色：承载 on 色文字的实心块（主按钮、选中的分段控件）
+    const fill = pushContrast(color, on, away);
+    const fillHover = pushContrast(mixHex(fill, away, 0.86), on, away);
+    // 文字色：既要落在 surface 上，也要落在 accent-soft 软底上（选中态标签），
+    // 所以按软底合成后的背景求一个更严的阈值
+    const softOver = mixHex(color, surface, dark ? 0.24 : 0.11);
+    const text = pushContrast(color, softOver, away, 5.2);
+    host.style.setProperty('--accent', color);
+    host.style.setProperty('--accent-fill', fill);
+    host.style.setProperty('--accent-fill-hover', fillHover);
+    host.style.setProperty('--on-accent', on);
+    host.style.setProperty('--accent-text', text);
+    host.style.setProperty('--accent-soft', `color-mix(in srgb, ${color} ${dark ? 24 : 11}%, transparent)`);
+    host.style.setProperty('--accent-line', `color-mix(in srgb, ${color} ${dark ? 46 : 34}%, transparent)`);
+    host.style.setProperty('--focus', `color-mix(in srgb, ${color} ${dark ? 52 : 42}%, transparent)`);
+  }
 
   function applyTheme() {
     const s = state.settings;
@@ -1301,26 +1388,11 @@ const placeholder = () => {
     if (!s.modeTouched && s.mode === 'system') s.mode = 'light';
     const dark = s.mode === 'system' ? sysDark() : s.mode === 'dark';
     s.dark = dark;
-    document.documentElement.style.setProperty('--primary', s.color);
     document.body.classList.toggle('dark', dark);
-    // 清掉上一个主题的类，避免残留（新增主题无需改这里）
-    Array.from(document.body.classList)
-      .filter((c) => c.indexOf('theme-') === 0)
-      .forEach((c) => document.body.classList.remove(c));
-    if (s.theme) document.body.classList.add('theme-' + s.theme);
-    // 主题色变了，背景蒙版要跟着换色
+    // 强调色按当前表面推导
+    applyAccent(ACCENT, dark);
+    // 明暗变了，背景蒙版要跟着换色
     if (typeof applyBackdrop === 'function') applyBackdrop();
-  }
-
-  function applyPreset(name) {
-    const p = PRESETS[name];
-    if (!p) return;
-    // 预设只改配色与主题类，不再强制明暗，深浅由用户独立选择
-    Object.assign(state.settings, { color: p.color, theme: p.theme });
-    save();
-    applyTheme();
-    renderSettings();
-    toast('已应用：' + p.label);
   }
 
   /* ---------------- 下载队列（最多同时 3 个） ---------------- */
@@ -1362,7 +1434,7 @@ const placeholder = () => {
           <div class="q-track"><div class="q-bar ${barCls}" style="width:${Math.min(100, pct)}%"></div></div>
         </div>
         <div class="q-state ${cls}">${esc(label)}</div>
-        ${t.status === 'queued' ? `<button class="q-x" data-act="queue-drop" data-id="${t.id}" title="移出队列">×</button>` : ''}
+        ${t.status === 'queued' ? `<button type="button" class="q-x" data-act="queue-drop" data-id="${t.id}" title="移出队列">×</button>` : ''}
       </div>`;
     }).join('');
   }
@@ -1723,8 +1795,8 @@ const placeholder = () => {
         ${busy ? '<p class="tip warn-text">该版本正在下载队列中，建议等它结束再删。</p>' : ''}
         ${isCur ? '<p class="tip warn-text">这是当前使用的版本，删除后需要重新下载才能启动。</p>' : ''}
         <div class="confirm-actions">
-          <button class="btn ghost" data-act="modal-close">取消</button>
-          <button class="btn danger" data-act="del-version-ok" data-id="${esc(id)}">删除</button>
+          <button type="button" class="btn ghost" data-act="modal-close">取消</button>
+          <button type="button" class="btn danger" data-act="del-version-ok" data-id="${esc(id)}">删除</button>
         </div>
       </div>`);
   }
@@ -1778,7 +1850,7 @@ const placeholder = () => {
     const rows = inst.map((id) => {
       const cur = id === state.version;
       const kind = /^fabric-loader/i.test(id) ? 'Fabric' : /^forge/i.test(id) ? 'Forge' : '官方版本';
-      return `<button class="pick-row ${cur ? 'on' : ''}" data-act="use-version" data-id="${esc(id)}">
+      return `<button type="button" class="pick-row ${cur ? 'on' : ''}" data-act="use-version" data-id="${esc(id)}">
         <span class="pick-info">
           <span class="pick-name">${esc(id)}</span>
           <span class="pick-sub">${kind} · 已下载</span>
@@ -1883,19 +1955,6 @@ const placeholder = () => {
       case 'login-offline': addOffline(); break;
       case 'login-ms': addMicrosoft(); break;
 
-      case 'set-color':
-        state.settings.color = id;
-        state.settings.theme = '';
-        save(); applyTheme(); renderSettings(); break;
-      case 'preset': applyPreset(id); break;
-      case 'mode': {
-        state.settings.mode = id;
-        state.settings.modeTouched = true;
-        save(); applyTheme(); renderSettings();
-        const label = { light: '浅色', dark: '深色', system: '跟随系统' }[id] || id;
-        toast('外观：' + label + (id === 'system' ? `（当前系统为${sysDark() ? '深色' : '浅色'}）` : ''));
-        break;
-      }
       case 'pick-java':
       case 'pick-dir': {
         if (!hasElectron) { toast('桌面端才支持选择文件夹'); break; }
@@ -2010,6 +2069,7 @@ const placeholder = () => {
       $('#' + el).addEventListener('change', (e) => { state.settings[key] = e.target.checked; save(); });
     });
   $('#resetBtn').addEventListener('click', () => { localStorage.removeItem(KEY); toast('已重置，重启启动器后生效'); });
+  $('#themeFab').addEventListener('click', cycleMode);
 
   // 开发辅助：Ctrl+R / F5 直接刷新界面，改完代码立即看效果
   document.addEventListener('keydown', (e) => {

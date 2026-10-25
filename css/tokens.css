@@ -1,0 +1,167 @@
+/* ==========================================================================
+   tokens.css — 设计变量层
+   只声明值，不声明组件规则。外观只有两套：浅色（body）与深色（body.dark），
+   组件样式不写主题选择器。
+
+   变量一律声明在 body 上（不是 :root）：派生变量（--hover、--line-soft、
+   --ring 等）在声明它的元素上完成替换，若声明在 :root，body.dark 覆盖
+   --surface-3 后 --hover 仍保留浅色值。同一元素上的覆盖才能正确重算。
+
+   --accent 是固定的品牌蓝，只用于装饰（软底、描边、进度、状态点）。
+   文字与填充用的强调色由 js/app.js 按对比度派生：
+     --accent-fill  承载 --on-accent 文字的填充色（≥ 4.5:1）
+     --accent-text  作为文字落在 surface / accent-soft 上的强调色（≥ 4.5:1）
+   ========================================================================== */
+
+:root { color-scheme: light; }
+
+body {
+  color-scheme: light;
+
+  /* ---- 中性表面 ---- */
+  --bg: #f3f5f9;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --surface-3: #edf1f6;
+  --hover: color-mix(in srgb, var(--surface-3) 70%, transparent);
+  --line: #e3e8ef;
+  --line-soft: color-mix(in srgb, var(--line) 62%, transparent);
+  --line-strong: #ccd5e0;
+  --text: #1b2028;
+  --text-muted: #5b6675;
+  --text-faint: #656d79;
+
+  /* ---- 强调色（JS 覆盖前的前置默认值） ---- */
+  --accent: #2b7bf0;
+  --accent-fill: #2871dd;
+  --accent-fill-hover: #2261be;
+  --on-accent: #ffffff;
+  --accent-text: #2260bb;
+  --accent-soft: color-mix(in srgb, var(--accent) 11%, transparent);
+  --accent-line: color-mix(in srgb, var(--accent) 34%, transparent);
+  --focus: color-mix(in srgb, var(--accent) 42%, transparent);
+
+  /* ---- 状态色 ---- */
+  --ok: #16794a;
+  --ok-soft: color-mix(in srgb, var(--ok) 12%, transparent);
+  --warn: #8a6106;
+  --warn-soft: color-mix(in srgb, #e0a300 22%, transparent);
+  --err: #bf3226;
+  --err-soft: color-mix(in srgb, var(--err) 10%, transparent);
+
+  /* ---- 加载器标签 ---- */
+  --tag-forge: #a8500a;
+  --tag-forge-soft: color-mix(in srgb, #ff7a00 16%, transparent);
+  --tag-fabric: #5c33cf;
+  --tag-fabric-soft: color-mix(in srgb, #7c4dff 13%, transparent);
+
+  /* ---- 控制台：三套主题都是深色终端，对比度按终端单独校准 ---- */
+  --log-bg: #12151b;
+  --log-text: #d5dbe5;
+  --log-dim: #8993a4;
+  --log-info: #8dc2ff;
+  --log-warn: #f0cd75;
+  --log-error: #ff9287;
+  --log-game: #86e6ad;
+
+  /* ---- 浮层 ---- */
+  --on-danger: #ffffff;          /* 落在 --err 实心底上的文字 */
+  --knob: #ffffff;               /* 开关滑块的圆点，两种外观都保持白色 */
+  --knob-shadow: 0 1px 3px rgba(0, 0, 0, .24);
+  --on-media: #ffffff;           /* 落在图像/半透明遮罩上的文字 */
+  --media-scrim: rgba(0, 0, 0, .6);
+  --skin-shadow: rgba(15, 23, 42, .16);   /* 皮肤预览投影，深色外观加重 */
+  --scrim: rgba(11, 15, 22, .46);
+  --toast-bg: #1d222b;
+  --toast-text: #f2f5fa;
+
+  /* ---- 字体 ---- */
+  --font-ui: system-ui, -apple-system, "Segoe UI Variable Text", "Segoe UI", "PingFang SC", "Microsoft YaHei UI", "Noto Sans SC", sans-serif;
+  --font-mono: "Cascadia Mono", "JetBrains Mono", "SF Mono", Consolas, ui-monospace, monospace;
+  --fs-11: 11px;
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-16: 16px;
+  --fs-20: 20px;
+  --lh-tight: 1.35;
+  --lh-body: 1.55;
+
+  /* ---- 间距（4 的倍数） ---- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+
+  /* ---- 圆角 ---- */
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r-md: 10px;
+  --r-lg: 12px;
+  --r-card: 14px;
+  --r-xl: 18px;
+  --r-pill: 999px;
+
+  /* ---- 层次 ---- */
+  --e1: 0 1px 2px rgba(16, 24, 40, .05), 0 1px 3px rgba(16, 24, 40, .05);
+  --e2: 0 6px 20px rgba(16, 24, 40, .09), 0 2px 6px rgba(16, 24, 40, .05);
+  --e3: 0 24px 60px rgba(8, 12, 20, .28), 0 8px 20px rgba(8, 12, 20, .16);
+  --ring: 0 0 0 3px var(--focus);
+  --action-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 26%, transparent);
+
+  /* ---- 磨砂玻璃（壁纸铺满时卡片对身后内容做模糊） ---- */
+  --frost-card: blur(18px) saturate(1.25);
+  --frost-log: blur(10px) saturate(1.1);
+
+  /* ---- 动效 ---- */
+  --dur-1: 120ms;
+  --dur-2: 180ms;
+  --ease: cubic-bezier(.2, .8, .3, 1);
+}
+
+body.dark {
+  color-scheme: dark;
+
+  --bg: #101318;
+  --surface: #191d24;
+  --surface-2: #14181e;
+  --surface-3: #232830;
+  --line: #2a303a;
+  --line-strong: #3b4350;
+  --text: #e6eaf1;
+  --text-muted: #a8b1bd;
+  --text-faint: #7f8996;
+
+  /* 深色下填充色提亮、文字色改为深色，均由 JS 按对比度重算；这里只留兜底 */
+  --accent-fill: #5595f3;
+  --accent-fill-hover: #6ea6f5;
+  --on-accent: #0b0f14;
+  --accent-text: #77abf5;
+  --accent-soft: color-mix(in srgb, var(--accent) 24%, transparent);
+  --accent-line: color-mix(in srgb, var(--accent) 46%, transparent);
+  --focus: color-mix(in srgb, var(--accent) 52%, transparent);
+
+  --ok: #56cf90;
+  --ok-soft: color-mix(in srgb, var(--ok) 18%, transparent);
+  --warn: #e9be5e;
+  --warn-soft: color-mix(in srgb, var(--warn) 20%, transparent);
+  --err: #ff8b80;
+  --err-soft: color-mix(in srgb, var(--err) 16%, transparent);
+
+  --tag-forge: #ffa45c;
+  --tag-fabric: #b6a4ff;
+
+  --log-bg: #0c0f13;
+  --log-text: #ccd3de;
+  --skin-shadow: rgba(0, 0, 0, .55);
+  --scrim: rgba(5, 8, 12, .6);
+  --toast-bg: #262c35;
+
+  --e1: 0 1px 2px rgba(0, 0, 0, .4);
+  --e2: 0 8px 24px rgba(0, 0, 0, .45);
+  --e3: 0 26px 60px rgba(0, 0, 0, .55);
+  --action-shadow: 0 6px 20px color-mix(in srgb, var(--accent) 34%, transparent);
+}

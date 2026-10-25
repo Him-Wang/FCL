@@ -8,7 +8,7 @@
 > 变更细节见 [Releases · v1.1.0](../../releases/tag/v1.1.0)。
 
 **FCL**（Fish + MineCraft + Launcher，曾用名 FMCL / 肥鱼启动器）是 Windows 上的 Minecraft 桌面启动器，PCL 风格界面，Electron 构建。
-集成版本与加载器安装、模组与材质包光影、离线皮肤、Java 一键部署，全程中文镜像加速，支持 3 套主题与自定义背景。
+集成版本与加载器安装、模组与材质包光影、离线皮肤、Java 一键部署，全程中文镜像加速，支持浅色 / 深色 / 跟随系统与自定义背景。
 
 <p>
   <img alt="platform" src="https://img.shields.io/badge/platform-Windows%20x64-2b7bf0">
@@ -53,12 +53,12 @@
 
 ### 界面
 
-- **3 套主题 × 3 种明暗**：DeepSeek 经典（品牌蓝）/ WorkBuddy 经典（品牌绿）/ 默认主题，浅色、深色、跟随系统
+- **浅色 / 深色 / 跟随系统**：右下角圆形悬浮按钮切换，图标随状态在太阳 / 月亮 / 自动之间变化，点一次循环切换
 - **自定义背景图 + 磨砂玻璃**：卡片、侧栏、壁纸整体做 backdrop-filter 模糊，Windows 11 上再叠加系统级 Acrylic；背景不透明度 30%–100% 实时生效
 - **托盘常驻**：点 × 最小化到托盘，托盘菜单可显示窗口或退出；可在设置里改回点 × 直接退出
 - ColorOS 风格的大圆角、柔和投影、胶囊控件
 
-> 截图使用「默认主题」；设置里可切换 DeepSeek 经典 / WorkBuddy 经典两套预设，配浅色、深色、跟随系统。
+> 截图使用浅色；明暗用右下角的圆形悬浮按钮切换，没有其他主题入口。
 
 | | |
 | --- | --- |
@@ -138,7 +138,9 @@ preload.js           暴露给渲染进程的受限 API
 index.html           单页结构 + SVG 图标精灵
 js/app.js            渲染进程：页面状态、交互、皮肤/模组/设置等全部 UI 逻辑
 js/data.js           内置静态数据（新闻兜底等）
-css/style.css        设计令牌 + 组件样式 + 主题/明暗 + ColorOS 风格层
+css/tokens.css       设计变量层：颜色 / 字号 / 间距 / 圆角 / 层次，浅色与深色只在这里换值
+css/app.css          组件与布局：只引用变量，不写外观选择器、不写颜色字面量
+design.md            设计系统契约（界面呈现规则、可用基元、反模式）
 lib/installer.js     版本安装、镜像探测、资源校验
 lib/java.js          Java 探测与一键部署
 lib/modstore.js      Modrinth 搜索与安装
