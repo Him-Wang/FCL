@@ -1847,12 +1847,24 @@ ipcMain.handle('dialog:openFolder', async () => {
 });
 
 ipcMain.handle('shell:open', async (_e, target) => {
-  if (!target) return false;
+  if (!target || typeof target !== 'string' || target.length > 4096) return false;
   try {
-    // 目录不存在时先创建（例如首次打开 saves / mods）
-    if (!fs.existsSync(target) && !path.extname(target)) fs.mkdirSync(target, { recursive: true });
-    if (fs.existsSync(target)) return shell.openPath(target) === '';
-    await shell.openExternal(target);
+    // 本地路径：只打开已存在项；缺失目录仅在游戏目录内补建，避免渲染层任意写盘
+    if (!/^[a-z][a-z0-9+.-]*:/i.test(target)) {
+      const p = path.resolve(target);
+      const gameRoot = path.resolve(ROOT, 'game');
+      if (!fs.existsSync(p)) {
+        const inside = p.toLowerCase().startsWith(gameRoot.toLowerCase() + path.sep);
+        if (!inside || path.extname(p)) return false;
+        fs.mkdirSync(p, { recursive: true });
+      }
+      return shell.openPath(p) === '';
+    }
+    // 外链：只放行 http/https，其余协议（file:、smb:、javascript: 等）一律拒绝
+    let u;
+    try { u = new URL(target); } catch (e) { return false; }
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return false;
+    await shell.openExternal(u.toString());
     return true;
   } catch (e) {
     return false;
