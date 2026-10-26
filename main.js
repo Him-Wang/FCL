@@ -18,6 +18,30 @@ const crypto = require('crypto');
 const { exec, spawn } = require('child_process');
 
 const { Version, launch, createMinecraftProcessWatcher } = require('@xmcl/core');
+
+/* 默认 GC 参数：单机 / 联机长时间游玩时减少"卡一下"的停顿。
+   这类停顿会把手感搞成"灵敏度变了 / 快速转视角跟不上鼠标"——其实是帧率掉下去后
+   鼠标位移按帧采样导致的。用户自己在设置里填了 JVM 参数时不覆盖。 */
+const OPTIMIZED_JVM_ARGS = [
+  '-XX:+UseG1GC',
+  '-XX:+ParallelRefProcEnabled',
+  '-XX:MaxGCPauseMillis=200',
+  '-XX:+UnlockExperimentalVMOptions',
+  '-XX:+DisableExplicitGC',
+  '-XX:+AlwaysPreTouch',
+  '-XX:G1NewSizePercent=30',
+  '-XX:G1MaxNewSizePercent=40',
+  '-XX:G1HeapRegionSize=8M',
+  '-XX:G1ReservePercent=20',
+  '-XX:G1HeapWastePercent=5',
+  '-XX:G1MixedGCCountTarget=4',
+  '-XX:InitiatingHeapOccupancyPercent=15',
+  '-XX:G1MixedGCLiveThresholdPercent=90',
+  '-XX:G1RSetUpdatingPauseTimePercent=5',
+  '-XX:SurvivorRatio=32',
+  '-XX:+PerfDisableSharedMem',
+  '-XX:MaxTenuringThreshold=1',
+];
 const installer = require('./lib/installer');
 const modstore = require('./lib/modstore');
 const cnmod = require('./lib/cnmod');
@@ -1511,7 +1535,12 @@ ipcMain.handle('mc:launch', async (_e, req) => {
     launcherBrand: 'FCL',
     minMemory: Math.min(1024, req.maxMemory || 4096),
     maxMemory: req.maxMemory || 4096,
-    extraJVMArgs: (req.jvmArgs || '').split(/\s+/).filter(Boolean)
+    extraJVMArgs: (() => {
+      const custom = String(req.jvmArgs || '').trim();
+      if (custom) return custom.split(/\s+/).filter(Boolean);
+      if (req.optimizedJvm === false) return [];
+      return OPTIMIZED_JVM_ARGS.slice();
+    })()
   };
 
   if (req.account) {

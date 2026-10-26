@@ -35,7 +35,7 @@
     skinLib: [],
     settings: {
       mem: 4096, javaPath: '', gameDir: '', winW: 1280, winH: 720,
-      jvm: '-XX:+UseG1GC -XX:+ParallelRefProcEnabled',
+      jvm: '', optimizedJvm: true,
       dark: false, mode: 'light', clientId: '',
       fullscreen: false, closeLauncher: false, checkAssets: true, isolate: true, opacity: 1
     },
@@ -1335,6 +1335,7 @@ const placeholder = () => {
     }
     $('#winW').value = s.winW; $('#winH').value = s.winH;
     $('#jvmArgs').value = s.jvm;
+    if ($('#optOptimizedJvm')) $('#optOptimizedJvm').checked = s.optimizedJvm !== false;
     $('#clientId').value = s.clientId;
     $('#optFullscreen').checked = s.fullscreen;
     $('#optCloseLauncher').checked = s.closeLauncher;
@@ -1712,7 +1713,7 @@ const placeholder = () => {
       const r = await L.launch({
         gameDir: gameDir(), version: state.version, javaPath: state.settings.javaPath,
         maxMemory: state.settings.mem, width: state.settings.winW, height: state.settings.winH,
-        fullscreen: state.settings.fullscreen, jvmArgs: state.settings.jvm,
+        fullscreen: state.settings.fullscreen, jvmArgs: state.settings.jvm, optimizedJvm: state.settings.optimizedJvm !== false,
         account: { name: a.name, uuid: a.uuid, accessToken: a.accessToken || '' }
       });
       if (!r.ok) throw new Error(r.error || '启动失败');
@@ -2195,7 +2196,7 @@ const placeholder = () => {
     });
   });
   $('#gameDir').addEventListener('change', (e) => { state.settings.gameDir = e.target.value; save(); refreshEnv(); });
-  [['optFullscreen', 'fullscreen'], ['optCloseLauncher', 'closeLauncher'], ['optCheckAssets', 'checkAssets'], ['optIsolate', 'isolate']]
+  [['optFullscreen', 'fullscreen'], ['optCloseLauncher', 'closeLauncher'], ['optCheckAssets', 'checkAssets'], ['optIsolate', 'isolate'], ['optOptimizedJvm', 'optimizedJvm']]
     .forEach(([el, key]) => {
       $('#' + el).addEventListener('change', (e) => { state.settings[key] = e.target.checked; save(); });
     });

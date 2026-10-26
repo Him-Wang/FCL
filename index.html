@@ -386,8 +386,11 @@
               <p class="tip">未安装 Java 时点「启动游戏」会自动部署（MC 26.x 需要 Java 25，1.20+ 用 Java 21）。</p>
             </div>
             <div class="field wide">
-              <label>JVM 参数</label><input id="jvmArgs" type="text" placeholder="-XX:+UseG1GC -Dsun.rmi..." />
+              <label>JVM 参数</label>
+              <input id="jvmArgs" type="text" placeholder="留空则使用优化参数（推荐）" />
+              <p class="tip">留空时会自动带上优化过的 GC 参数，减少长时间游玩后的卡顿；填了内容则以你填的为准。</p>
             </div>
+            <label class="check"><input type="checkbox" id="optOptimizedJvm" checked /> 启用优化 JVM 参数（减少卡顿）</label>
             <div class="field wide">
               <label>微软登录 Client ID <span class="muted">（Azure 应用，免费申请；不填则无法使用微软登录）</span></label>
               <input id="clientId" type="text" placeholder="00000000-0000-0000-0000-000000000000" />
