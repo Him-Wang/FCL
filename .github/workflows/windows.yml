@@ -1,0 +1,44 @@
+name: windows
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Syntax check
+        run: |
+          node --check main.js
+          node --check preload.js
+          node --check js/app.js
+          node --check lib/installer.js
+          node --check lib/microsoft.js
+
+      - name: Package (unpacked, unsigned)
+        run: npx electron-builder --win --x64 --dir
+
+      - name: Verify build output
+        shell: pwsh
+        run: |
+          $asar = "dist/win-unpacked/resources/app.asar"
+          if (-not (Test-Path $asar)) { throw "missing $asar" }
+          "app.asar = {0:N0} bytes" -f (Get-Item $asar).Length
+          npx --yes @electron/asar list $asar | Select-Object -First 8
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FCL-win-unpacked
+          path: dist/win-unpacked
