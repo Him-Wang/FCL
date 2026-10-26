@@ -1308,6 +1308,16 @@ const placeholder = () => {
   }
 
   /* ---------------- 设置页 ---------------- */
+  /** 关闭行为三选一的状态与点击（唯一入口，避免和弹窗里的"记住选择"打架） */
+  function renderCloseBehavior() {
+    const cur = (state.paths && state.paths.closeBehavior) || 'ask';
+    $('[data-act="close-behavior"]').forEach((b) => {
+      const on = b.dataset.id === cur;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
   function renderSettings() {
     const s = state.settings;
     $('#memRange').value = s.mem;
@@ -1765,6 +1775,25 @@ const placeholder = () => {
 
   let msTimer = null;
   /** 把主进程返回的微软登录结果整理成账号对象（两处登录入口共用） */
+  async function setCloseBehavior(mode) {
+    const v = mode === 'minimize' || mode === 'quit' ? mode : 'ask';
+    try {
+      const r = await L.setCloseBehavior(v);
+      if (!r || !r.ok) {
+        toast('保存失败：' + ((r && r.error) || '未知错误'));
+        return;
+      }
+      state.paths = Object.assign({}, state.paths, { closeBehavior: v });
+      renderCloseBehavior();
+      toast(
+        v === 'ask' ? '点 × 时会问你' : v === 'minimize' ? '点 × 时最小化到托盘' : '点 × 时直接退出',
+        2600,
+      );
+    } catch (e) {
+      toast('设置失败：' + (e.message || e));
+    }
+  }
+
   async function makeMicrosoftAccount(r) {
     const acc = {
       id: 'a' + Date.now(),
@@ -2002,6 +2031,7 @@ const placeholder = () => {
       case 'pack-del': deletePack(id); break;
       case 'import-mod': importContent('mod'); break;
       case 'import-pack': importContent(state.store.type === 'shader' ? 'shader' : 'resourcepack'); break;
+      case 'close-behavior': setCloseBehavior(id); break;
       case 'pick-skin': pickSkin(); break;
       case 'reset-skin': resetSkin(); break;
       case 'skin-variant': setSkinVariant(id); break;
@@ -2119,39 +2149,6 @@ const placeholder = () => {
   $('#memRange').addEventListener('input', (e) => {
     state.settings.mem = +e.target.value; save(); renderSettings(); renderEnv();
   });
-  if ($('#optCloseAsk')) {
-    $('#optCloseAsk').addEventListener('change', async (e) => {
-      const want = e.target.checked;
-      try {
-        const r = await L.setCloseAsk(want);
-        if (!r || !r.ok) {
-          toast('保存失败：' + ((r && r.error) || '未知错误'));
-          return;
-        }
-        state.paths = Object.assign({}, state.paths, { closeAskEach: want });
-        toast(want ? '以后每次点 × 都会问你' : '已恢复：按上次的选择直接执行', 3200);
-      } catch (err) {
-        toast('设置失败：' + (err.message || err));
-      }
-    });
-  }
-
-  if ($('#optTray')) {
-    $('#optTray').addEventListener('change', async (e) => {
-      const want = e.target.checked;
-      try {
-        const r = await L.setTray(want);
-        if (!r || !r.ok) {
-          toast('保存失败：' + ((r && r.error) || '未知错误'));
-          return;
-        }
-        state.paths = Object.assign({}, state.paths, { minimizeToTray: want });
-        toast(want ? '点 × 现在会最小化到托盘' : '点 × 现在会直接退出', 3000);
-      } catch (err) {
-        toast('设置失败：' + (err.message || err));
-      }
-    });
-  }
   if ($('#skinFile')) $('#skinFile').addEventListener('change', onSkinFileChosen);
   if ($('#bgFile')) $('#bgFile').addEventListener('change', onBgFileChosen);
 

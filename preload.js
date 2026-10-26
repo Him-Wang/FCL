@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('launcher', {
   restart: () => ipcRenderer.invoke('app:restart'),
   setTray: (v) => ipcRenderer.invoke('app:set-tray', v),
   setCloseAsk: (v) => ipcRenderer.invoke('app:set-close-ask', v),
+  setCloseBehavior: (v) => ipcRenderer.invoke('app:set-close-behavior', v),
   onTrayHint: (cb) => sub('tray:hint', cb),
   onAlreadyRunning: (cb) => sub('app:already-running', cb),
   onAskClose: (cb) => sub('app:ask-close', cb),

@@ -186,9 +186,25 @@ function patchCfg(patch) {
   }
 }
 
+/* 关闭行为：单一开关，避免"每次询问"和"记住选择"互相打架。
+   ask（默认）/ minimize / quit；旧配置会自动迁移一次。 */
+function currentCloseBehavior() {
+  const b = UI_CFG.closeBehavior;
+  if (b === 'minimize' || b === 'quit' || b === 'ask') return b;
+  // 旧配置迁移：closeAsked + minimizeToTray
+  if (UI_CFG.closeAsked === true) return UI_CFG.minimizeToTray === false ? 'quit' : 'minimize';
+  return 'ask';
+}
+
 const USE_TRANSPARENT = UI_CFG.transparent !== false; // 默认开启；只有配置文件里显式写 false 才用不透明窗口
 
 /* 设置里切换「窗口背景透明」：写进 config.json，重启后生效 */
+ipcMain.handle('app:set-close-behavior', async (_e, val) => {
+  const b = val === 'minimize' || val === 'quit' ? val : 'ask';
+  const ok = patchCfg({ closeBehavior: b });
+  return ok ? { ok: true, closeBehavior: b } : { ok: false, error: '写入 config.json 失败' };
+});
+
 ipcMain.handle('app:set-close-ask', async (_e, val) => {
   const ok = patchCfg({ closeAskEach: !!val, closeAskV: 2, ...(val ? { closeAsked: false } : { closeAsked: true }) });
   return ok ? { ok: true, closeAskEach: !!val } : { ok: false, error: '写入 config.json 失败' };
@@ -801,12 +817,13 @@ win.on('closed', () => {
   ipcMain.on('app:close-choice', (_e, opt) => {
     const o = opt || {};
     closeAskedPending = false;
-    patchCfg({
-      closeAsked: true,
-      closeAskV: 2,
-      ...(o.remember === false ? {} : { minimizeToTray: !!o.minimize }),
-    });
-    log('info', '关闭方式选择：' + (o.minimize ? '最小化到托盘' : '直接退出') + (o.remember === false ? '（本次有效）' : '（已记住）'));
+    closeAskSeq++;
+    const behavior = o.minimize ? 'minimize' : 'quit';
+    patchCfg(o.remember === false ? { closeBehavior: 'ask' } : { closeBehavior: behavior });
+    log(
+      'info',
+      '关闭方式选择：' + (o.minimize ? '最小化到托盘' : '直接退出') + (o.remember === false ? '（本次有效）' : '（已记住）'),
+    );
     if (o.minimize) hideToTray();
     else {
       quitting = true;
@@ -942,6 +959,19 @@ async function runTask(t) {
 async function performInstall(req, onProgress) {
   const gameDir = req.gameDir;
   log('info', `开始安装：${req.id || req.mc}（${req.kind}）`);
+
+  // Fabric / Forge 都叠加在原版之上：原版版本文件不存在时先装原版，
+  // 否则解析 inheritsFrom 会直接 ENOENT
+  if ((req.kind === 'fabric' || req.kind === 'forge') && req.mc) {
+    const baseJson = path.join(gameDir, 'versions', req.mc, req.mc + '.json');
+    if (!fs.existsSync(baseJson)) {
+      log('info', `先安装原版 ${req.mc}（${req.kind} 需要它作为基础）…`);
+      onProgress && onProgress({ phase: '下载原版', name: req.mc, done: 0, total: 0, current: 0, count: 2 });
+      await installer.installVanilla(req.mc, gameDir, (pp) => {
+        onProgress && onProgress(Object.assign({ phase: '下载原版' }, pp || {}));
+      }, req.assets !== false);
+    }
+  }
   if (req.kind === 'fabric') {
     if (!req.loader) {
       const loaders = await installer.fabricLoaders(req.mc);
@@ -971,6 +1001,18 @@ async function performInstall(req, onProgress) {
       });
       java = { path: deployed.path, version: deployed.version };
       log('info', `Java ${major} 部署完成：${deployed.path}`);
+    }
+    // Forge 安装器要求游戏目录里有 launcher_profiles.json，
+    // 否则会报 "There is no Minecraft launcher profile ... you need to run the launcher first!"
+    try {
+      const prof = path.join(gameDir, 'launcher_profiles.json');
+      if (!fs.existsSync(prof)) {
+        fs.mkdirSync(gameDir, { recursive: true });
+        fs.writeFileSync(prof, JSON.stringify({ profiles: {}, settings: {}, version: 3 }, null, 2), 'utf8');
+        log('info', '已为 Forge 安装器补上 launcher_profiles.json');
+      }
+    } catch (e) {
+      log('warn', '写 launcher_profiles.json 失败：' + (e.message || e));
     }
     return installer.installForge(req.mc, req.forge, gameDir, java.path, onProgress);
   }
@@ -1260,7 +1302,7 @@ ipcMain.handle('app:root', async () => ({
   version: app.getVersion(),
   transparent: USE_TRANSPARENT,
   minimizeToTray: UI_CFG.minimizeToTray !== false,
-  closeAskEach: UI_CFG.closeAskEach === true,
+  closeBehavior: currentCloseBehavior(),
 }));
 
 ipcMain.handle('app:set-root', async (_e, req) => {

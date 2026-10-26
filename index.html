@@ -402,8 +402,15 @@
               <div class="row wrap">
                 <label class="check"><input type="checkbox" id="optFullscreen" /> 启动后全屏</label>
                 <label class="check"><input type="checkbox" id="optCloseLauncher" /> 游戏启动后关闭启动器</label>
-                <label class="check"><input type="checkbox" id="optCloseAsk" /> 每次点 × 都问我（最小化还是退出）</label>
-                <label class="check"><input type="checkbox" id="optTray" /> 点 × 时最小化到托盘（托盘菜单里可退出）</label>
+                <div class="field wide">
+                  <label>关闭窗口时</label>
+                  <div class="skin-seg" id="closeBehaviorSeg" role="group" aria-label="关闭窗口时的行为">
+                    <button type="button" class="skin-seg-btn" data-act="close-behavior" data-id="ask">每次询问我</button>
+                    <button type="button" class="skin-seg-btn" data-act="close-behavior" data-id="minimize">最小化到托盘</button>
+                    <button type="button" class="skin-seg-btn" data-act="close-behavior" data-id="quit">直接退出</button>
+                  </div>
+                  <p class="tip">选「每次询问我」时，点 × 会弹出窗口让你当场决定；在弹窗里勾选「记住我的选择」会改掉这里的设置。</p>
+                </div>
                 <label class="check"><input type="checkbox" id="optCheckAssets" /> 启动前检查资源完整性</label>
                 <label class="check"><input type="checkbox" id="optIsolate" /> 版本隔离</label>
               </div>
