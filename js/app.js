@@ -1320,7 +1320,7 @@ const placeholder = () => {
 
   function renderSettings() {
     const s = state.settings;
-    $('#memRange').value = s.mem;
+    if (document.activeElement !== $('#memRange')) $('#memRange').value = s.mem;
     $('#memText').textContent = `${s.mem} MB（${(s.mem / 1024).toFixed(1)} GB）`;
     const op = Math.round((s.opacity || 1) * 100);
     $('#opacityRange').value = op;
@@ -2148,7 +2148,16 @@ const placeholder = () => {
   }));
 
   $('#memRange').addEventListener('input', (e) => {
-    state.settings.mem = +e.target.value; save(); renderSettings(); renderEnv();
+    const mem = +e.target.value;
+    state.settings.mem = mem;
+    const txt = $('#memText');
+    if (txt) txt.textContent = `${mem} MB（${(mem / 1024).toFixed(1)} GB）`;
+    save();
+  });
+  $('#memRange').addEventListener('change', () => {
+    // 松手后再刷新依赖内存的部分（侧栏、启动预估等）
+    renderSettings();
+    renderEnv();
   });
   if ($('#skinFile')) $('#skinFile').addEventListener('change', onSkinFileChosen);
   if ($('#bgFile')) $('#bgFile').addEventListener('change', onBgFileChosen);
