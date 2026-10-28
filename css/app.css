@@ -1169,3 +1169,19 @@ body {
   white-space: pre-wrap;
   word-break: break-all;
 }
+
+/* ---------------- 依赖检查 ---------------- */
+.deps-body { padding: var(--sp-4) var(--sp-5); }
+.deps-list { display: flex; flex-direction: column; gap: 8px; margin-top: var(--sp-2); }
+.deps-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+  padding: 8px 12px;
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  border: 1px solid var(--line-soft);
+  font-size: var(--fs-12);
+}
+.deps-item b { font-family: var(--mono, ui-monospace, Consolas, monospace); }

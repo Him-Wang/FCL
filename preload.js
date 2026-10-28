@@ -34,6 +34,11 @@ contextBridge.exposeInMainWorld('launcher', {
 
   relaunchAdmin: () => ipcRenderer.invoke('app:relaunch-admin'),
 
+  // 依赖自检
+  depsCheck: (req) => ipcRenderer.invoke('deps:check', req),
+  depsFix: (req) => ipcRenderer.invoke('deps:fix', req),
+  onDepsProgress: (fn) => ipcRenderer.on('deps:progress', (_e, pr) => fn(pr)),
+
   // P2P 联机
   p2pStatus: () => ipcRenderer.invoke('p2p:status'),
   p2pStart: (req) => ipcRenderer.invoke('p2p:start', req),

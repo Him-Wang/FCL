@@ -52,6 +52,7 @@ const serverLib = require('./lib/server');
 const crashLib = require('./lib/crash');
 const updater = require('./lib/update');
 const p2p = require('./lib/p2p');
+const deps = require('./lib/deps');
 
 /* ============================================================
  * 便携根目录：exe 旁边的 FCL\ 文件夹
@@ -2297,4 +2298,51 @@ ipcMain.handle('p2p:stop', async () => {
   send('p2p:state', { running: false });
   log('info', 'P2P 已停止');
   return { ok };
+});
+
+
+/* ---------------- 模组依赖自检 / 一键修复 ---------------- */
+ipcMain.handle('deps:check', async (_e, req) => {
+  const gameDir = (req && req.gameDir) || GAME_DIR;
+  const r = deps.check({ gameDir, version: req && req.version });
+  log('info', `依赖检查：${r.mods.length} 个模组，缺失 ${r.missing.length} 项`);
+  return r;
+});
+
+ipcMain.handle('deps:fix', async (_e, req) => {
+  const gameDir = (req && req.gameDir) || GAME_DIR;
+  const mc = (req && req.mc) || '';
+  const loader = (req && req.loader) || 'fabric';
+  const before = deps.check({ gameDir, version: req && req.version });
+  const installed = [];
+  const failed = [];
+
+  for (let round = 0; round < 3; round++) {
+    const cur = deps.check({ gameDir, version: req && req.version });
+    if (!cur.missing.length) break;
+    const slugs = deps.slugsFor(cur.missing);
+    let progressed = false;
+    for (const slug of slugs) {
+      try {
+        send('deps:progress', { phase: '安装依赖', name: slug });
+        const r = await modstore.install({ id: slug, mc, loader, type: 'mod', gameDir });
+        installed.push({ slug, file: r.file, version: r.version });
+        log('info', `已补装依赖：${slug} → ${r.file}`);
+        progressed = true;
+      } catch (e) {
+        failed.push({ slug, error: String((e && e.message) || e) });
+        log('warn', `补装依赖失败：${slug}（${(e && e.message) || e}）`);
+      }
+    }
+    if (!progressed) break;
+  }
+
+  const after = deps.check({ gameDir, version: req && req.version });
+  return {
+    ok: after.missing.length === 0,
+    before: before.missing,
+    after: after.missing,
+    installed,
+    failed,
+  };
 });

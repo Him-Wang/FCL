@@ -36,7 +36,7 @@
     skinLib: [],
     settings: {
       mem: 4096, javaPath: '', gameDir: '', winW: 1280, winH: 720,
-      jvm: '', optimizedJvm: true,
+      jvm: '', optimizedJvm: true, autoDeps: true,
       dark: false, mode: 'light', clientId: '',
       fullscreen: false, closeLauncher: false, checkAssets: true, isolate: true, opacity: 1
     },
@@ -337,6 +337,111 @@
     srvLog('[联机] ' + (r.message || (r.ok ? '映射成功' : '映射失败')));
     if (st) st.textContent = r.ok ? 'UPnP 已映射，外网可用公网地址' : 'UPnP 不可用，需要手动端口转发';
     toast(r.message || (r.ok ? '映射成功' : '映射失败'), 6000);
+  }
+
+  /* ---------------- 模组依赖自检 ---------------- */
+  /** 自动补装缺失依赖（Fabric API 这类）；返回补装了什么 */
+  async function autoFixDeps(reason) {
+    if (!hasElectron || !L.depsFix) return null;
+    if (state.settings.autoDeps === false) return null;
+    const gd = (state.env && state.env.gameDir) || gameDir();
+    if (!gd) return null;
+    try {
+      const pre = await L.depsCheck({ gameDir: gd, version: state.version });
+      if (!pre.missing || !pre.missing.length) return null;
+      appendLog('info', `检测到缺失依赖（${reason || '自动检查'}）：` + pre.missing.map((x) => x.id).join('、'));
+      const r = await L.depsFix({
+        gameDir: gd,
+        version: state.version,
+        mc: mcOf(state.version),
+        loader: loaderOf(state.version) || 'fabric',
+      });
+      const ok = (r.installed || []).map((x) => x.slug);
+      if (ok.length) {
+        appendLog('info', '已自动补装：' + ok.join('、'));
+        toast('已自动补装依赖：' + ok.join('、'), 6000);
+        await refreshEnv();
+      }
+      return { installed: ok, remaining: (r.after || []).map((x) => x.id) };
+    } catch (e) {
+      appendLog('warn', '自动补依赖失败：' + (e.message || e));
+      return null;
+    }
+  }
+
+
+  function renderDeps(result) {
+    const box = $('#depsBox');
+    if (!box) return;
+    box.classList.remove('hidden');
+    const st = $('#depsState');
+    const body = $('#depsBody');
+    const fix = $('#depsFixBtn');
+    const missing = (result && result.missing) || [];
+    const mods = (result && result.mods) || [];
+    if (st) st.textContent = `${mods.length} 个模组 · 缺失 ${missing.length} 项`;
+    if (fix) fix.disabled = !missing.length;
+    if (!body) return;
+    if (!missing.length) {
+      body.innerHTML = '<p class="tip">依赖齐全，可以直接启动。</p>';
+      return;
+    }
+    body.innerHTML =
+      '<p class="tip">下面这些依赖被其他模组需要，但没有安装：</p>' +
+      '<div class="deps-list">' +
+      missing
+        .map(
+          (x) =>
+            `<div class="deps-item"><b>${esc(x.id)}</b>${x.range && x.range !== '*' ? ' <span class="muted">' + esc(x.range) + '</span>' : ''}<span class="muted">← 被 ${esc((x.by || []).join(', '))} 需要</span></div>`
+        )
+        .join('') +
+      '</div>';
+  }
+
+  async function depsCheck() {
+    if (!hasElectron || !L.depsCheck) { toast('桌面端才支持依赖检查'); return; }
+    const btn = $('#depsCheckBtn');
+    const old = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = '检查中…'; }
+    try {
+      const r = await L.depsCheck({ gameDir: (state.env && state.env.gameDir) || gameDir(), version: state.version });
+      state.deps = r;
+      renderDeps(r);
+      if (r.missing.length) toast(`发现 ${r.missing.length} 个缺失依赖，可一键补装`, 5000);
+      else if (!r.mods.length) toast('这个目录里没有找到模组（先确认版本 / 游戏目录）', 6000);
+      else toast('依赖齐全', 3000);
+    } catch (e) {
+      toast('检查失败：' + ipcMsg(e), 5000);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = old; }
+    }
+  }
+
+  async function depsFix() {
+    if (!hasElectron || !L.depsFix) return;
+    const btn = $('#depsFixBtn');
+    const old = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = '安装中…'; }
+    const mc = mcOf(state.version);
+    const loader = loaderOf(state.version) || 'fabric';
+    const off = L.onDepsProgress ? L.onDepsProgress((p) => {
+      if (btn && p && p.name) btn.textContent = '安装 ' + p.name + '…';
+    }) : null;
+    try {
+      const r = await L.depsFix({ gameDir: (state.env && state.env.gameDir) || gameDir(), version: state.version, mc, loader });
+      state.deps = { missing: r.after, mods: (state.deps && state.deps.mods) || [] };
+      renderDeps(state.deps);
+      const okN = (r.installed || []).length;
+      const badN = (r.failed || []).length;
+      appendLog('info', `依赖修复：补装 ${okN} 个${badN ? '，失败 ' + badN + ' 个' : ''}，剩余缺失 ${r.after.length}`);
+      if (r.ok) toast('依赖已补齐，可以启动游戏了', 6000);
+      else toast(`还有 ${r.after.length} 项没解决${badN ? '（' + badN + ' 项安装失败）' : ''}`, 7000);
+      refreshEnv();
+    } catch (e) {
+      toast('修复失败：' + ipcMsg(e), 6000);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = old; }
+    }
   }
 
   /* ---------------- P2P 联机 ---------------- */
@@ -1094,10 +1199,15 @@
     const { isShader, list, enabled } = packInfo();
     panel.classList.remove('hidden');
     $('#packTitle').textContent = `${isShader ? '已安装光影' : '已安装材质包'} · ${list.length} 个`;
-    $('#irisBtn').classList.toggle('hidden', !isShader || !/^fabric/i.test(String(state.version)));
+    if ($('#irisBtn')) {
+      $('#irisBtn').classList.toggle('hidden', !isShader);
+      $('#irisBtn').textContent = /^fabric/i.test(String(state.version))
+        ? '安装 Iris（光影前置）'
+        : '自动装 Fabric + Iris';
+    }
     if (!list.length) {
       $('#packList').innerHTML = `<div class="empty">${hasElectron
-        ? (isShader ? '还没有光影。注意：光影需要 Iris（Fabric）或 OptiFine 才能生效' : '还没有材质包，下面一键部署即可')
+        ? (isShader ? '还没有光影。装好的光影需要 Iris（Fabric）或 OptiFine 才能生效，点右上角「自动装 Fabric + Iris」即可' : '还没有材质包，下面一键部署即可')
         : '演示模式：读不到本机目录'}</div>`;
       return;
     }
@@ -1143,7 +1253,29 @@
   /** 光影前置：给当前 Fabric 版本一键装 Iris */
   async function installIris(btn) {
     if (!hasElectron) { toast('需要桌面版'); return; }
-    if (!/^fabric/i.test(String(state.version))) { toast('当前版本不是 Fabric，请用 OptiFine 或切换到 Fabric 版本'); return; }
+    if (!/^fabric/i.test(String(state.version))) {
+      // 原版加载不了 Iris：自动装同版本 Fabric 并切过去
+      const mc = mcOf(state.version);
+      const oldTxt = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = '准备 Fabric…';
+      try {
+        const v = await ensureFabricForSkin(mc);
+        state.version = v;
+        save();
+        renderHero();
+        renderVersions();
+        toast('已切到 ' + v + '，继续安装 Iris', 5000);
+      } catch (e) {
+        toast('自动装 Fabric 失败：' + ipcMsg(e), 6000);
+        btn.disabled = false;
+        btn.textContent = oldTxt;
+        return;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = oldTxt;
+      }
+    }
     const old = btn.textContent;
     btn.disabled = true;
     btn.textContent = '匹配中…';
@@ -1209,8 +1341,10 @@
         toast(`已安装：${r.file}`);
         appendLog('info', `已下载 ${r.dir}/${r.file}（${r.version}）`);
       }
-      if (state.store.type === 'mod') await refreshEnv();
-      else { await refreshEnv(); renderPacks(); }
+      if (state.store.type === 'mod') {
+        await refreshEnv();
+        await autoFixDeps('刚安装的模组');
+      } else { await refreshEnv(); renderPacks(); }
     } catch (e) {
       btn.textContent = old;
       toast('安装失败：' + (e.message || e));
@@ -1712,6 +1846,7 @@
     $('#winW').value = s.winW; $('#winH').value = s.winH;
     $('#jvmArgs').value = s.jvm;
     if ($('#optOptimizedJvm')) $('#optOptimizedJvm').checked = s.optimizedJvm !== false;
+    if ($('#optAutoDeps')) $('#optAutoDeps').checked = s.autoDeps !== false;
     $('#clientId').value = s.clientId;
     $('#optFullscreen').checked = s.fullscreen;
     $('#optCloseLauncher').checked = s.closeLauncher;
@@ -1878,9 +2013,22 @@
   }
 
   function applyQueueUpdate(list) {
+    const prevDone = new Set((state.queue || []).filter((x) => x.status === 'done').map((x) => x.id));
+    const justDone = (list || []).filter((x) => x.status === 'done' && !prevDone.has(x.id));
     state.queue = list || [];
     renderQueue();
     renderVersions();
+    if (justDone.length) {
+      // 装完的版本要立刻出现在「切换版本」里（以前要重启启动器才看得到）
+      refreshEnv()
+        .then(() => {
+          renderVersions();
+          renderHero();
+          const names = justDone.map((x) => x.title).filter(Boolean);
+          if (names.length) appendLog('info', '安装完成：' + names.join('、'));
+        })
+        .catch(() => {});
+    }
     if (launching) {
       const t = state.queue.find((x) => x.title === state.version && x.status === 'running');
       if (t && t.progress) {
@@ -2044,6 +2192,12 @@
 
       // 1) 账号：没有就自动建
       ensureAccount();
+
+      // 1.5) Fabric / Forge 版本：启动前自动补缺失依赖（Fabric API 之类）
+      if (loaderOf(state.version) && state.settings.autoDeps !== false) {
+        setLaunchText('检查模组依赖…');
+        try { await autoFixDeps('启动前检查'); } catch (e) {}
+      }
 
       // 2) 版本：没装就自动下载（进下载队列并等它完成）
       if (!isInstalled(state.version)) {
@@ -2412,6 +2566,9 @@
       case 'import-mod': importContent('mod'); break;
       case 'import-pack': importContent(state.store.type === 'shader' ? 'shader' : 'resourcepack'); break;
       case 'srv-kind': state.srv.kind = id === 'vanilla' ? 'vanilla' : 'paper'; renderSrvState(); break;
+      case 'deps-check': depsCheck(); break;
+      case 'deps-fix': depsFix(); break;
+      case 'deps-close': { const b = $('#depsBox'); if (b) b.classList.add('hidden'); break; }
       case 'p2p-gen': p2pGenRoom(); break;
       case 'p2p-start': p2pStart(); break;
       case 'p2p-stop': p2pStop(); break;
@@ -2619,7 +2776,7 @@
     });
   });
   $('#gameDir').addEventListener('change', (e) => { state.settings.gameDir = e.target.value; save(); refreshEnv(); });
-  [['optFullscreen', 'fullscreen'], ['optCloseLauncher', 'closeLauncher'], ['optCheckAssets', 'checkAssets'], ['optIsolate', 'isolate'], ['optOptimizedJvm', 'optimizedJvm']]
+  [['optFullscreen', 'fullscreen'], ['optCloseLauncher', 'closeLauncher'], ['optCheckAssets', 'checkAssets'], ['optIsolate', 'isolate'], ['optOptimizedJvm', 'optimizedJvm'], ['optAutoDeps', 'autoDeps']]
     .forEach(([el, key]) => {
       $('#' + el).addEventListener('change', (e) => { state.settings[key] = e.target.checked; save(); });
     });

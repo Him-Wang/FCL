@@ -22,6 +22,7 @@
   <symbol id="i-info" viewBox="0 0 24 24"><path d="M12 21a9 9 0 100-18 9 9 0 000 18zM12 11v5m0-8h.01"/></symbol>
   <symbol id="i-search" viewBox="0 0 24 24"><path d="M11 18a7 7 0 100-14 7 7 0 000 14zm5-2l5 5"/></symbol>
   <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3m-8 0l1 13h8l1-13"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 10-2.3 5.7M20 5v6h-6"/></symbol>
   <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></symbol>
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
@@ -212,6 +213,7 @@
             <button type="button" class="btn primary" data-act="import-mod"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>导入模组</button>
             <button type="button" class="btn ghost" data-act="browse-mods"><svg class="ic" aria-hidden="true"><use href="#i-folder"/></svg>打开模组文件夹</button>
             <button type="button" class="btn ghost" data-act="refresh-mods"><svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg>刷新</button>
+            <button type="button" class="btn" data-act="deps-check" id="depsCheckBtn"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>依赖检查</button>
           </div>
           <div class="search">
             <svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>
@@ -222,6 +224,17 @@
           <div class="list" id="modList"></div>
         </div>
         <div class="hint" id="modStat"></div>
+
+        <div class="panel hidden" id="depsBox">
+          <div class="panel-head"><span class="panel-title">依赖检查</span>
+            <span class="muted" id="depsState"></span>
+          </div>
+          <div id="depsBody" class="deps-body"></div>
+          <div class="panel-foot">
+            <button type="button" class="btn primary" data-act="deps-fix" id="depsFixBtn">一键补装缺失依赖</button>
+            <button type="button" class="btn ghost" data-act="deps-close">关闭</button>
+          </div>
+        </div>
 
         <div class="panel">
           <div class="panel-head">
@@ -521,6 +534,7 @@
               <p class="tip">留空时会自动带上优化过的 GC 参数，减少长时间游玩后的卡顿；填了内容则以你填的为准。</p>
             </div>
             <label class="check"><input type="checkbox" id="optOptimizedJvm" checked /> 启用优化 JVM 参数（减少卡顿）</label>
+            <label class="check"><input type="checkbox" id="optAutoDeps" checked /> 自动补装缺失的模组依赖（如 Fabric API）</label>
             <div class="field wide">
               <label>微软登录 Client ID <span class="muted">（Azure 应用，免费申请；不填则无法使用微软登录）</span></label>
               <input id="clientId" type="text" placeholder="00000000-0000-0000-0000-000000000000" />
