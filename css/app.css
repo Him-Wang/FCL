@@ -274,13 +274,20 @@ input[type="range"] {
   appearance: none;
 }
 input[type="range"]::-webkit-slider-runnable-track {
-  height: 4px;
+  height: 6px;
   border-radius: var(--r-pill);
-  background: var(--line);
+  /* --fill 由 JS 按当前值设置：左边已选、右边未选 */
+  background: linear-gradient(
+    to right,
+    var(--accent-fill) 0,
+    var(--accent-fill) var(--fill, 0%),
+    var(--line) var(--fill, 0%),
+    var(--line) 100%
+  );
 }
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 14px; height: 14px;
+  width: 16px; height: 16px;
   margin-top: -5px;
   border-radius: 50%;
   background: var(--accent-fill);

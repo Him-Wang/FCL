@@ -32,6 +32,15 @@ contextBridge.exposeInMainWorld('launcher', {
   downloadUpdate: (req) => ipcRenderer.invoke('app:download-update', req),
   onUpdateProgress: (fn) => ipcRenderer.on('update:progress', (_e, pr) => fn(pr)),
 
+  relaunchAdmin: () => ipcRenderer.invoke('app:relaunch-admin'),
+
+  // P2P 联机
+  p2pStatus: () => ipcRenderer.invoke('p2p:status'),
+  p2pStart: (req) => ipcRenderer.invoke('p2p:start', req),
+  p2pStop: () => ipcRenderer.invoke('p2p:stop'),
+  onP2pLog: (fn) => ipcRenderer.on('p2p:log', (_e, l) => fn(l)),
+  onP2pState: (fn) => ipcRenderer.on('p2p:state', (_e, s) => fn(s)),
+
   // 联机
   netInfo: () => ipcRenderer.invoke('net:info'),
   netFirewall: (port) => ipcRenderer.invoke('net:firewall', port),

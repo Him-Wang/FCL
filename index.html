@@ -418,6 +418,40 @@
         </div>
 
         <div class="panel">
+          <div class="panel-head"><span class="panel-title">P2P 联机（内置 EasyTier）</span>
+            <span class="srv-online" id="p2pIp">未启动</span>
+          </div>
+          <div class="form grid">
+            <div class="field">
+              <label>房间号</label>
+              <div class="row">
+                <input id="p2pRoom" type="text" placeholder="双方填同一个，例如 fcl-483920" />
+                <button type="button" class="btn ghost" data-act="p2p-gen">随机</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>房间密码</label>
+              <input id="p2pSecret" type="text" placeholder="留空则与房间号相同" />
+            </div>
+            <div class="field wide">
+              <label>加入地址（房主留空；加入方填房主的地址）</label>
+              <div class="row">
+                <input id="p2pPeer" type="text" placeholder="例如 10.144.144.1 或 公网IP:11010" />
+                <button type="button" class="btn ghost" data-act="p2p-copy">复制本机地址</button>
+              </div>
+              <p class="tip" id="p2pHint">房主启动后把「虚拟 IP:25565」发给朋友即可进服；跨网络时房主需要有公网地址（或自建中继：<code>easytier-core -d --network-name 房间号 --network-secret 密码</code>）。虚拟网卡需要管理员权限，失败请以管理员身份重开启动器。</p>
+            </div>
+            <div class="field wide">
+              <div class="row wrap">
+                <button type="button" class="btn primary" data-act="p2p-start" id="p2pStartBtn">启动 P2P</button>
+                <button type="button" class="btn ghost" data-act="p2p-stop" id="p2pStopBtn">停止</button>
+                <button type="button" class="btn ghost hidden" data-act="p2p-admin" id="p2pAdminBtn">以管理员身份重启</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
           <div class="panel-head"><span class="panel-title">控制台</span>
             <span class="muted" id="srvHint">创建后这里会显示服务端输出</span>
             <span class="srv-online" id="srvOnline">在线 0</span>

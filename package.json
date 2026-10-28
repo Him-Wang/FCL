@@ -1,94 +1,104 @@
 {
-    "name":  "fcl",
-    "productName":  "FCL",
-    "version": "1.4.3",
-    "description":  "FishCraftLauncher (FCL) — PCL 风格的 Minecraft 桌面启动器（Electron）",
-    "main":  "main.js",
-    "scripts":  {
-                    "start":  "node start.js",
-                    "icon":  "node tools/make-icon.js mint",
-                    "dist":  "tools\\package-win.cmd",
-                    "dist:raw":  "electron-builder --win --x64",
-                    "dist:mac":  "electron-builder --mac"
-                },
-    "author":  "Hermintway",
-    "license":  "MIT",
-    "build":  {
-                  "appId":  "com.fcl.launcher",
-                  "productName":  "FCL",
-                  "directories":  {
-                                      "output":  "dist"
-                                  },
-                  "win":  {
-                              "target":  [
-                                             "portable"
-                                         ],
-                              "icon":  "build/icon.ico",
-                              "artifactName":  "FCL-${version}-${arch}.${ext}"
-                          },
-                  "nsis":  {
-                               "oneClick":  false,
-                               "perMachine":  false,
-                               "allowToChangeInstallationDirectory":  true,
-                               "createDesktopShortcut":  true,
-                               "createStartMenuShortcut":  true,
-                               "shortcutName":  "FCL"
-                           },
-                  "asarUnpack":  [
-                                     "node_modules/@xmcl/**"
-                                 ],
-                  "files":  [
-                                "**/*",
-                                "!dist/**",
-                                "!tools/**",
-                                "!shots/**",
-                                "!.build-tmp/**",
-                                "!FCL/**",
-                                "!docs/**",
-                                "!*.pdf",
-                                "!*.log",
-                                "!*.md",
-                                "!*.docx",
-                                "!.test-server/**",
-                                "!.temp-game/**",
-                                "build/icon.ico",
-                                "!design.md",
-                                "build/icon.png",
-                                "!.verify-game/**"
-                            ],
-                  "mac":  {
-                              "target":  [
-                                             {
-                                                 "target":  "dmg",
-                                                 "arch":  [
-                                                              "x64",
-                                                              "arm64"
-                                                          ]
-                                             },
-                                             {
-                                                 "target":  "zip",
-                                                 "arch":  [
-                                                              "x64",
-                                                              "arm64"
-                                                          ]
-                                             }
-                                         ],
-                              "category":  "public.app-category.games",
-                              "icon":  "build/icon.png",
-                              "artifactName":  "FCL-${version}-mac-${arch}.${ext}",
-                              "hardenedRuntime":  false,
-                              "gatekeeperAssess":  false,
-                              "extendInfo":  {
-                                                 "NSHighResolutionCapable":  true
-                                             }
-                          }
-              },
-    "devDependencies":  {
-                            "electron": "^33.4.11",
-                            "electron-builder":  "^26.18.0"
-                        },
-    "dependencies":  {
-                         "@xmcl/core":  "^2.15.1",
-                         "@xmcl/user":  "^4.4.2"
-                     }
+  "name": "fcl",
+  "productName": "FCL",
+  "version": "1.4.4",
+  "description": "FishCraftLauncher (FCL) — PCL 风格的 Minecraft 桌面启动器（Electron）",
+  "main": "main.js",
+  "scripts": {
+    "start": "node start.js",
+    "icon": "node tools/make-icon.js mint",
+    "dist": "tools\\package-win.cmd",
+    "dist:raw": "electron-builder --win --x64",
+    "dist:mac": "electron-builder --mac"
+  },
+  "author": "Hermintway",
+  "license": "MIT",
+  "build": {
+    "appId": "com.fcl.launcher",
+    "productName": "FCL",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "FCL-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "FCL"
+    },
+    "asarUnpack": [
+      "node_modules/@xmcl/**"
+    ],
+    "files": [
+      "**/*",
+      "!dist/**",
+      "!tools/**",
+      "!shots/**",
+      "!.build-tmp/**",
+      "!FCL/**",
+      "!docs/**",
+      "!*.pdf",
+      "!*.log",
+      "!*.md",
+      "!*.docx",
+      "!.test-server/**",
+      "!.temp-game/**",
+      "build/icon.ico",
+      "!design.md",
+      "build/icon.png",
+      "!.verify-game/**",
+      "!vendor/**"
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.games",
+      "icon": "build/icon.png",
+      "artifactName": "FCL-${version}-mac-${arch}.${ext}",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "extendInfo": {
+        "NSHighResolutionCapable": true
+      }
+    },
+    "extraResources": [
+      {
+        "from": "vendor/easytier",
+        "to": "easytier",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ]
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^26.18.0"
+  },
+  "dependencies": {
+    "@xmcl/core": "^2.15.1",
+    "@xmcl/user": "^4.4.2"
+  }
 }

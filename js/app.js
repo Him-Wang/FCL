@@ -111,7 +111,7 @@
     $$('.page').forEach((s) => s.classList.toggle('active', s.id === 'page-' + p));
     $('.content').scrollTop = 0;
     if (p === 'accounts') renderSkin();
-    if (p === 'server') { renderServerPage(); refreshLanInfo(); }
+    if (p === 'server') { renderServerPage(); refreshLanInfo(); if ($('#p2pRoom') && !$('#p2pRoom').value) p2pGenRoom(); p2pRender(); }
   }
 
   /* ---------------- 开服 ---------------- */
@@ -337,6 +337,74 @@
     srvLog('[联机] ' + (r.message || (r.ok ? '映射成功' : '映射失败')));
     if (st) st.textContent = r.ok ? 'UPnP 已映射，外网可用公网地址' : 'UPnP 不可用，需要手动端口转发';
     toast(r.message || (r.ok ? '映射成功' : '映射失败'), 6000);
+  }
+
+  /* ---------------- P2P 联机 ---------------- */
+  /** EasyTier 建虚拟网卡需要管理员权限，命中就别报"未知错误" */
+  function p2pNeedAdmin(text) {
+    if (!/Failed to create adapter|拒绝访问|0x80070005|access is denied|administrator/i.test(String(text || ''))) return false;
+    const btn = $('#p2pAdminBtn');
+    if (btn) btn.classList.remove('hidden');
+    $('#p2pHint') && ($('#p2pHint').textContent = 'EasyTier 需要管理员权限创建虚拟网卡：点「以管理员身份重启」后重试。');
+    return true;
+  }
+
+  function p2pRender() {
+    const st = state.p2p || {};
+    const ipEl = $('#p2pIp');
+    if (ipEl) {
+      ipEl.textContent = st.running ? (st.virtualIp ? st.virtualIp : '已启动，等分配 IP') : '未启动';
+      ipEl.classList.toggle('on', !!st.running);
+    }
+    const start = $('#p2pStartBtn');
+    const stop = $('#p2pStopBtn');
+    if (start) start.disabled = !!st.running;
+    if (stop) stop.disabled = !st.running;
+  }
+
+  function p2pGenRoom() {
+    const r = 'fcl-' + String(Math.floor(Math.random() * 900000 + 100000));
+    if ($('#p2pRoom')) $('#p2pRoom').value = r;
+  }
+
+  async function p2pStart() {
+    if (!hasElectron || !L.p2pStart) { toast('桌面端才支持 P2P'); return; }
+    const room = ($('#p2pRoom').value || '').trim();
+    if (!room) { toast('请先填房间号'); return; }
+    const btn = $('#p2pStartBtn');
+    const old = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '启动中…';
+    try {
+      const r = await L.p2pStart({
+        room,
+        secret: ($('#p2pSecret').value || '').trim(),
+        peer: ($('#p2pPeer').value || '').trim(),
+      });
+      state.p2p = { running: true, role: r.role, virtualIp: r.virtualIp, room: r.room };
+      srvLog('[P2P] 已启动：' + (r.role === 'host' ? '房主' : '加入') + '，虚拟 IP ' + (r.virtualIp || '待分配'));
+      p2pRender();
+      toast(r.role === 'host' ? '房主已就绪：把虚拟 IP 发给朋友' : '已加入房间', 5000);
+    } catch (e) {
+      const msg = ipcMsg(e);
+      srvLog('[P2P] 启动失败：' + msg);
+      p2pNeedAdmin(msg);
+      toast('P2P 启动失败：' + msg, 6000);
+      if (/管理员|denied|0x80070005/i.test(msg)) {
+        toast('虚拟网卡需要管理员权限，请右键以管理员身份运行启动器', 8000);
+      }
+    } finally {
+      btn.disabled = false;
+      btn.textContent = old;
+    }
+  }
+
+  async function p2pStop() {
+    if (!hasElectron || !L.p2pStop) return;
+    await L.p2pStop();
+    state.p2p = { running: false };
+    p2pRender();
+    srvLog('[P2P] 已停止');
   }
 
   async function srvCreate() {
@@ -1616,6 +1684,16 @@
     });
   }
 
+  /** 让 range 的轨道按当前值涂色：--fill = 已选比例 */
+  function paintRange(el) {
+    if (!el) return;
+    const min = Number(el.min) || 0;
+    const max = Number(el.max) || 100;
+    const val = Number(el.value) || min;
+    const pct = max > min ? ((val - min) / (max - min)) * 100 : 0;
+    el.style.setProperty('--fill', Math.max(0, Math.min(100, pct)).toFixed(2) + '%');
+  }
+
   function renderSettings() {
     const s = state.settings;
     if (document.activeElement !== $('#memRange')) $('#memRange').value = s.mem;
@@ -1639,6 +1717,8 @@
     $('#optCloseLauncher').checked = s.closeLauncher;
     $('#optCheckAssets').checked = s.checkAssets;
     $('#optIsolate').checked = s.isolate;
+    paintRange($('#memRange'));
+    paintRange($('#opacityRange'));
     renderThemeFab();
     renderJavaState();
     renderUpdateState();
@@ -2332,6 +2412,16 @@
       case 'import-mod': importContent('mod'); break;
       case 'import-pack': importContent(state.store.type === 'shader' ? 'shader' : 'resourcepack'); break;
       case 'srv-kind': state.srv.kind = id === 'vanilla' ? 'vanilla' : 'paper'; renderSrvState(); break;
+      case 'p2p-gen': p2pGenRoom(); break;
+      case 'p2p-start': p2pStart(); break;
+      case 'p2p-stop': p2pStop(); break;
+      case 'p2p-admin': if (hasElectron && L.relaunchAdmin) L.relaunchAdmin(); break;
+      case 'p2p-copy': {
+        const ip = (state.p2p && state.p2p.virtualIp) || '10.144.144.1';
+        const port = +($('#srvPort') && $('#srvPort').value) || 25565;
+        navigator.clipboard.writeText(ip + ':' + port).then(() => toast('已复制：' + ip + ':' + port, 4000)).catch(() => {});
+        break;
+      }
       case 'crash-export': crashExport(); break;
       case 'crash-open': if (hasElectron && state.lastCrash && state.lastCrash.report) L.open(state.lastCrash.report); break;
       case 'crash-close': closeModal(); break;
@@ -2471,6 +2561,7 @@
 
   $('#memRange').addEventListener('input', (e) => {
     const mem = +e.target.value;
+    paintRange(e.target);
     state.settings.mem = mem;
     const txt = $('#memText');
     if (txt) txt.textContent = `${mem} MB（${(mem / 1024).toFixed(1)} GB）`;
@@ -2515,6 +2606,7 @@
   });
   $('#opacityRange').addEventListener('input', (e) => {
     const pct = +e.target.value;
+    paintRange(e.target);
     state.settings.opacity = pct / 100;
     $('#opacityText').textContent = pct + '%';
     save();
@@ -2557,6 +2649,19 @@
   applyBackdrop();
 
   if (hasElectron) {
+    if (L.onP2pLog) L.onP2pLog((line) => {
+      srvLog(line);
+      if (p2pNeedAdmin(line)) state.p2p = Object.assign({ running: false }, state.p2p);
+      if (/ipv4/i.test(line)) {
+        const m = /(\d+\.\d+\.\d+\.\d+)/.exec(line);
+        if (m) { state.p2p = Object.assign({ running: true }, state.p2p, { virtualIp: m[1] }); p2pRender(); }
+      }
+    });
+    if (L.onP2pState) L.onP2pState((st) => {
+      state.p2p = Object.assign({}, state.p2p, st);
+      p2pRender();
+      if (st && st.running === false) srvLog('[P2P] 进程已退出');
+    });
     L.onLog((l) => appendLog(l.lv, l.msg));
     if (L.onCrash) L.onCrash((info) => showCrashDialog(info));
     L.onGameExit((e) => {

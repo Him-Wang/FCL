@@ -51,6 +51,7 @@ const localskin = require('./lib/localskin');
 const serverLib = require('./lib/server');
 const crashLib = require('./lib/crash');
 const updater = require('./lib/update');
+const p2p = require('./lib/p2p');
 
 /* ============================================================
  * 便携根目录：exe 旁边的 FCL\ 文件夹
@@ -2252,4 +2253,48 @@ ipcMain.handle('shell:reveal', async (_e, p) => {
   } catch (e) {
     return false;
   }
+});
+
+
+/* ---------------- 以管理员身份重启 ---------------- */
+ipcMain.handle('app:relaunch-admin', async () => {
+  try {
+    const { execFile } = require('child_process');
+    const exe = process.execPath;
+    execFile(
+      'powershell.exe',
+      ['-NoProfile', '-Command', `Start-Process -FilePath '${exe}' -Verb RunAs`],
+      { windowsHide: true },
+    );
+    log('info', '正在以管理员身份重新启动：' + exe);
+    setTimeout(() => {
+      quitting = true;
+      app.quit();
+    }, 900);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String((e && e.message) || e) };
+  }
+});
+
+/* ---------------- P2P 联机 ---------------- */
+ipcMain.handle('p2p:status', async () => p2p.status());
+
+ipcMain.handle('p2p:start', async (_e, req) => {
+  const r = p2p.start({
+    room: req && req.room,
+    secret: req && req.secret,
+    peer: req && req.peer,
+    onLog: (line) => send('p2p:log', line),
+    onState: (st) => send('p2p:state', st),
+  });
+  log('info', `P2P 已启动：房间 ${r.room}，角色 ${r.role === 'host' ? '房主' : '加入'}，虚拟 IP ${r.virtualIp || '待分配'}`);
+  return { ok: true, ...r };
+});
+
+ipcMain.handle('p2p:stop', async () => {
+  const ok = p2p.stop();
+  send('p2p:state', { running: false });
+  log('info', 'P2P 已停止');
+  return { ok };
 });
