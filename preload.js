@@ -21,6 +21,15 @@ contextBridge.exposeInMainWorld('launcher', {
   setTray: (v) => ipcRenderer.invoke('app:set-tray', v),
   setCloseAsk: (v) => ipcRenderer.invoke('app:set-close-ask', v),
   setCloseBehavior: (v) => ipcRenderer.invoke('app:set-close-behavior', v),
+
+  // 一键开服
+  serverInfo: (dir) => ipcRenderer.invoke('server:info', dir),
+  serverCreate: (req) => ipcRenderer.invoke('server:create', req),
+  serverStart: (req) => ipcRenderer.invoke('server:start', req),
+  serverStop: () => ipcRenderer.invoke('server:stop'),
+  onServerLog: (fn) => ipcRenderer.on('server:log', (_e, line) => fn(line)),
+  onServerState: (fn) => ipcRenderer.on('server:state', (_e, st) => fn(st)),
+  onServerProgress: (fn) => ipcRenderer.on('server:progress', (_e, p) => fn(p)),
   onTrayHint: (cb) => sub('tray:hint', cb),
   onAlreadyRunning: (cb) => sub('app:already-running', cb),
   onAskClose: (cb) => sub('app:ask-close', cb),

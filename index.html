@@ -69,6 +69,7 @@
         <button class="nav-item" type="button" data-page="versions"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg><span>版本管理</span></button>
         <button class="nav-item" type="button" data-page="store"><svg class="ic" aria-hidden="true"><use href="#i-store"/></svg><span>材质包·光影</span></button>
         <button class="nav-item" type="button" data-page="mods"><svg class="ic" aria-hidden="true"><use href="#i-puzzle"/></svg><span>模组管理</span></button>
+        <button class="nav-item" type="button" data-page="server"><svg class="ic" aria-hidden="true"><use href="#i-store"/></svg><span>开服</span></button>
         <button class="nav-item" type="button" data-page="accounts"><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg><span>账号管理</span></button>
         <button class="nav-item" type="button" data-page="settings"><svg class="ic" aria-hidden="true"><use href="#i-sliders"/></svg><span>设置</span></button>
       </nav>
@@ -294,7 +295,10 @@
 
           <div class="skin-body">
             <div class="skin-preview-card">
-              <div class="skin-stage"><canvas id="skinPreview" width="196" height="308"></canvas></div>
+              <div class="skin-stage">
+                <div id="skinPreview" class="skin3d-host" role="img" aria-label="皮肤 3D 预览（可拖拽旋转）"></div>
+                <div class="skin3d-hint">拖拽旋转 · 滚轮缩放</div>
+              </div>
               <div class="skin-preview-meta">
                 <b id="skinHeroName">未选择账号</b>
                 <span class="muted" id="skinSourceTxt">—</span>
@@ -332,6 +336,62 @@
               </section>
             </div>
           </div>
+        </div>
+      </section>
+
+
+      <!-- 开服 -->
+      <section class="page" id="page-server" aria-labelledby="h-server">
+        <div class="page-head">
+          <h2 class="page-title" id="h-server">开服</h2>
+          <p class="page-sub">一键创建并启动 Minecraft 服务端（Paper / 原版）</p>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><span class="panel-title">服务端</span>
+            <span class="srv-state" id="srvState">未创建</span>
+          </div>
+          <div class="form grid">
+            <div class="field">
+              <label>服务端类型</label>
+              <div class="skin-seg" role="group" aria-label="服务端类型">
+                <button type="button" class="skin-seg-btn active" data-act="srv-kind" data-id="paper">Paper（推荐）</button>
+                <button type="button" class="skin-seg-btn" data-act="srv-kind" data-id="vanilla">原版</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>游戏版本</label>
+              <input id="srvMc" type="text" placeholder="26.3" />
+            </div>
+            <div class="field">
+              <label>端口</label>
+              <input id="srvPort" type="number" value="25565" min="1" max="65535" />
+            </div>
+            <div class="field">
+              <label>内存（MB）</label>
+              <input id="srvMem" type="number" value="2048" min="1024" step="512" />
+            </div>
+            <div class="field wide">
+              <label>服务端目录</label>
+              <input id="srvDir" type="text" readonly />
+            </div>
+            <div class="field wide">
+              <label class="check"><input type="checkbox" id="srvOnline" checked /> 正版验证（online-mode，关闭后离线账号也能进）</label>
+            </div>
+          </div>
+          <div class="panel-foot">
+            <button type="button" class="btn primary" data-act="srv-create" id="srvCreateBtn">创建服务端</button>
+            <button type="button" class="btn" data-act="srv-start" id="srvStartBtn">启动</button>
+            <button type="button" class="btn ghost" data-act="srv-stop" id="srvStopBtn">停止</button>
+            <button type="button" class="btn ghost" data-act="srv-open" id="srvOpenBtn">打开目录</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><span class="panel-title">控制台</span>
+            <span class="muted" id="srvHint">创建后这里会显示服务端输出</span>
+          </div>
+          <pre class="srv-console" id="srvConsole" tabindex="0"></pre>
         </div>
       </section>
 
@@ -507,6 +567,7 @@
 
 <script src="js/data.js"></script>
 <script src="js/avatar.js"></script>
-<script src="js/app.js"></script>
+<script src="js/skin3d.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>

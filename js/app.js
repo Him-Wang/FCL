@@ -22,6 +22,7 @@
 
   /* ---------------- 状态 ---------------- */
   const state = {
+    srv: { kind: 'paper', mc: '', port: 25565, mem: 2048, dir: '', running: false, created: null },
     page: 'launch',
     version: '1.20.4',
     accounts: [],
@@ -109,6 +110,131 @@
     });
     $$('.page').forEach((s) => s.classList.toggle('active', s.id === 'page-' + p));
     $('.content').scrollTop = 0;
+    if (p === 'accounts') renderSkin();
+    if (p === 'server') renderServerPage();
+  }
+
+  /* ---------------- 开服 ---------------- */
+  function ipcMsg(e) {
+    return String((e && e.message) || e).replace(/^Error invoking remote method '[^']+':\s*(Error:\s*)?/, '');
+  }
+  function srvLog(line) {
+    const box = $('#srvConsole');
+    if (!box) return;
+    const atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 30;
+    box.textContent += (box.textContent ? '\n' : '') + line;
+    if (box.textContent.length > 200000) box.textContent = box.textContent.slice(-120000);
+    if (atBottom) box.scrollTop = box.scrollHeight;
+  }
+
+  function renderSrvState() {
+    const el = $('#srvState');
+    if (!el) return;
+    const s = state.srv;
+    el.classList.toggle('on', !!s.running);
+    el.classList.toggle('busy', !s.running && !!s.created);
+    el.textContent = s.running ? '运行中' : s.created ? '已创建' : '未创建';
+    const start = $('#srvStartBtn');
+    const stop = $('#srvStopBtn');
+    if (start) start.disabled = !s.created || s.running;
+    if (stop) stop.disabled = !s.running;
+    const dir = $('#srvDir');
+    if (dir) dir.value = s.dir || '';
+    $$('[data-act="srv-kind"]').forEach((b) => b.classList.toggle('active', b.dataset.id === s.kind));
+  }
+
+  async function renderServerPage() {
+    if (!hasElectron) return;
+    if (!state.srv.mc) state.srv.mc = state.version || '26.3';
+    const mc = $('#srvMc');
+    if (mc && !mc.value) mc.value = state.srv.mc;
+    try {
+      const r = await L.serverInfo();
+      state.srv.dir = r.dir;
+      state.srv.created = r.info;
+      state.srv.running = !!r.running || !!(r.info && r.info.running);
+      if (r.info) {
+        state.srv.kind = r.info.kind === 'vanilla' ? 'vanilla' : 'paper';
+        state.srv.port = r.info.port || state.srv.port;
+        state.srv.mem = r.info.mem || state.srv.mem;
+        if (!$('#srvMc').value) $('#srvMc').value = r.info.mc || state.srv.mc;
+      }
+    } catch (e) {}
+    renderSrvState();
+  }
+
+  async function srvCreate() {
+    const btn = $('#srvCreateBtn');
+    const mc = ($('#srvMc').value || '').trim();
+    const port = +$('#srvPort').value || 25565;
+    const mem = +$('#srvMem').value || 2048;
+    const online = $('#srvOnline').checked;
+    if (!mc) { toast('请先填写游戏版本，例如 26.3'); return; }
+    if (!hasElectron) { toast('桌面端才能开服'); return; }
+    const old = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '创建中…';
+    $('#srvState').textContent = '准备中';
+    $('#srvState').classList.add('busy');
+    try {
+      const r = await L.serverCreate({ mc, kind: state.srv.kind, port, mem, onlineMode: online });
+      state.srv.dir = r.dir;
+      state.srv.created = r.info;
+      state.srv.mc = mc;
+      state.srv.port = port;
+      state.srv.mem = mem;
+      srvLog('[FCL] 服务端已创建：' + r.jar + '（' + mc + '，端口 ' + port + '）');
+      toast('服务端已创建，可以点「启动」了', 4000);
+    } catch (e) {
+      srvLog('[错误] ' + ipcMsg(e));
+      toast('创建失败：' + ipcMsg(e), 5000);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = old;
+      renderSrvState();
+    }
+  }
+
+  async function srvStart() {
+    if (!hasElectron) return;
+    try {
+      const r = await L.serverStart({ dir: state.srv.dir, mem: +$('#srvMem').value || 2048 });
+      state.srv.running = true;
+      srvLog('[FCL] 服务端已启动（PID ' + r.pid + '，堆 ' + r.heap + 'MB）');
+    } catch (e) {
+      const msg = ipcMsg(e);
+      srvLog('[错误] ' + msg);
+      // 没 Java 就顺手部署一个（和服务端同版本要求）
+      if (/未检测到 Java/.test(msg) && L.javaInstall) {
+        toast('没有 Java，正在自动部署…', 4000);
+        srvLog('[FCL] 未检测到 Java，开始自动部署…');
+        try {
+          await L.javaInstall({ major: 25 });
+          srvLog('[FCL] Java 部署完成，正在重试启动…');
+          const r2 = await L.serverStart({ dir: state.srv.dir, mem: +$('#srvMem').value || 2048 });
+          state.srv.running = true;
+          srvLog('[FCL] 服务端已启动（PID ' + r2.pid + '，堆 ' + r2.heap + 'MB）');
+        } catch (e2) {
+          srvLog('[错误] ' + ipcMsg(e2));
+          toast('Java 部署或启动失败：' + ipcMsg(e2), 6000);
+        }
+      } else {
+        toast('启动失败：' + msg, 5000);
+      }
+    }
+    renderSrvState();
+  }
+
+  async function srvStop() {
+    if (!hasElectron) return;
+    try {
+      await L.serverStop();
+      srvLog('[FCL] 已发送停止指令');
+    } catch (e) {
+      srvLog('[错误] ' + (e.message || e));
+    }
+    state.srv.running = false;
+    renderSrvState();
   }
 
   /* ---------------- 启动页 ---------------- */
@@ -887,84 +1013,17 @@
     renderSkinLib();
   }
 
-  /** 用皮肤贴图拼一个 2D 小人预览（不依赖 three.js） */
+  /** 皮肤预览：3D 模型（CSS 3D + 皮肤 UV），可拖拽旋转 / 滚轮缩放 */
   function drawSkin(a) {
-  const canvas = $('#skinPreview');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const W = canvas.width;
-  const H = canvas.height;
-  ctx.clearRect(0, 0, W, H);
-  const S = 6; // 每个皮肤像素放大 6 倍
-  const ox = Math.round((W - 16 * S) / 2);
-  const oy = Math.round((H - 32 * S) / 2);
-  const slim = skinOf(a).variant === 'slim';
-  // 脚下的椭圆阴影
-  {
-    const shY = oy + 32 * S + 4;
-    const g = ctx.createRadialGradient(ox + 8 * S, shY, 2, ox + 8 * S, shY, 10 * S);
-    g.addColorStop(0, 'rgba(15, 23, 42, 0.22)');
-    g.addColorStop(1, 'rgba(15, 23, 42, 0)');
-    ctx.save();
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.ellipse(ox + 8 * S, shY, 9 * S, 2.4 * S, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-
-const placeholder = () => {
-      const cols = { head: '#e0b48f', body: '#4a7ed8', limb: '#3f6cc0', eye: '#2b3440' };
-      ctx.fillStyle = cols.head;
-      ctx.fillRect(ox + 4 * S, oy, 8 * S, 8 * S);
-      ctx.fillStyle = cols.body;
-      ctx.fillRect(ox + 4 * S, oy + 8 * S, 8 * S, 12 * S);
-      ctx.fillStyle = cols.limb;
-      ctx.fillRect(ox + 0 * S, oy + 8 * S, 4 * S, 12 * S);
-      ctx.fillRect(ox + 12 * S, oy + 8 * S, 4 * S, 12 * S);
-      ctx.fillStyle = '#2f3f63';
-      ctx.fillRect(ox + 4 * S, oy + 20 * S, 4 * S, 12 * S);
-      ctx.fillRect(ox + 8 * S, oy + 20 * S, 4 * S, 12 * S);
-      ctx.fillStyle = cols.eye;
-      ctx.fillRect(ox + 6 * S, oy + 3 * S, 1 * S, 1 * S);
-      ctx.fillRect(ox + 9 * S, oy + 3 * S, 1 * S, 1 * S);
-    };
-
-    const dataUrl = skinOf(a).dataUrl;
-    if (!dataUrl) {
-      placeholder();
+    const host = $('#skinPreview');
+    if (!host) return;
+    const skin = skinOf(a);
+    if (!skin.dataUrl) {
+      if (window.Skin3D) window.Skin3D.clear(host);
+      host.innerHTML = '<div class="skin3d-empty">未设置皮肤</div>';
       return;
     }
-
-    const img = new Image();
-    img.onload = () => {
-      const legacy = img.height < 64; // 老版 64×32 皮肤没有左侧手臂/腿的贴图
-      const aw = slim ? 3 : 4;
-      const blit = (sx, sy, sw, sh, dx, dy, flip) => {
-        ctx.save();
-        if (flip) {
-          ctx.translate(dx + sw * S, dy);
-          ctx.scale(-1, 1);
-          ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw * S, sh * S);
-        } else {
-          ctx.drawImage(img, sx, sy, sw, sh, dx, dy, sw * S, sh * S);
-        }
-        ctx.restore();
-      };
-      // 头 / 身体
-      blit(8, 8, 8, 8, ox + 4 * S, oy);
-      blit(20, 20, 8, 12, ox + 4 * S, oy + 8 * S);
-      // 手臂（角色右臂在画面左侧）
-      blit(44, 20, aw, 12, ox + (4 - aw) * S, oy + 8 * S);
-      if (legacy) blit(44, 20, aw, 12, ox + 12 * S, oy + 8 * S, true);
-      else blit(36, 52, aw, 12, ox + 12 * S, oy + 8 * S);
-      // 腿
-      blit(4, 20, 4, 12, ox + 4 * S, oy + 20 * S);
-      if (legacy) blit(4, 20, 4, 12, ox + 8 * S, oy + 20 * S, true);
-      else blit(20, 52, 4, 12, ox + 8 * S, oy + 20 * S);
-    };
-    img.onerror = placeholder;
-    img.src = dataUrl;
+    if (window.Skin3D) window.Skin3D.build(host, skin.dataUrl, skin.variant || 'classic');
   }
 
   /** 读本地图片：直接用 <input type=file>，不依赖系统文件对话框（无边框/透明窗口下对话框可能弹不出来） */
@@ -1311,7 +1370,7 @@ const placeholder = () => {
   /** 关闭行为三选一的状态与点击（唯一入口，避免和弹窗里的"记住选择"打架） */
   function renderCloseBehavior() {
     const cur = (state.paths && state.paths.closeBehavior) || 'ask';
-    $('[data-act="close-behavior"]').forEach((b) => {
+    $$('[data-act="close-behavior"]').forEach((b) => {
       const on = b.dataset.id === cur;
       b.classList.toggle('active', on);
       b.setAttribute('aria-pressed', on ? 'true' : 'false');
@@ -2032,6 +2091,11 @@ const placeholder = () => {
       case 'pack-del': deletePack(id); break;
       case 'import-mod': importContent('mod'); break;
       case 'import-pack': importContent(state.store.type === 'shader' ? 'shader' : 'resourcepack'); break;
+      case 'srv-kind': state.srv.kind = id === 'vanilla' ? 'vanilla' : 'paper'; renderSrvState(); break;
+      case 'srv-create': srvCreate(); break;
+      case 'srv-start': srvStart(); break;
+      case 'srv-stop': srvStop(); break;
+      case 'srv-open': if (hasElectron && L.open) L.open(state.srv.dir); break;
       case 'close-behavior': setCloseBehavior(id); break;
       case 'pick-skin': pickSkin(); break;
       case 'reset-skin': resetSkin(); break;

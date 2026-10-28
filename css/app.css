@@ -704,7 +704,7 @@ button.chip.jump:hover b { color: var(--accent-text); }
 /* 皮肤：左侧大预览 + 右侧设置（参考 HMCL / Prism 的分栏信息密度） */
 .skin-body {
   display: grid;
-  grid-template-columns: 232px minmax(0, 1fr);
+  grid-template-columns: 300px minmax(0, 1fr);
   gap: var(--sp-5);
   padding: var(--sp-4) var(--sp-5) var(--sp-5);
   align-items: start;
@@ -736,7 +736,7 @@ button.chip.jump:hover b { color: var(--accent-text); }
 
 .skin-stage {
   width: 100%;
-  height: 288px;
+  height: 340px;
   display: grid;
   place-items: center;
   background:
@@ -746,7 +746,72 @@ button.chip.jump:hover b { color: var(--accent-text); }
   border-radius: var(--r-xl);
   overflow: hidden;
 }
+.skin-stage { position: relative; }
 .skin-stage canvas { width: 100%; height: 100%; }
+
+/* ---------- 3D 皮肤预览 ---------- */
+.skin3d-host {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  cursor: grab;
+  touch-action: none;
+  perspective: 900px;
+  user-select: none;
+}
+.skin3d-host.dragging { cursor: grabbing; }
+
+.sk3-inner {
+  position: relative;
+  width: 0; height: 0;
+  transform-style: preserve-3d;
+  transition: transform .08s linear;
+}
+.skin3d-host.dragging .sk3-inner { transition: none; }
+
+.sk3-box {
+  position: absolute;
+  transform-style: preserve-3d;
+  width: 0; height: 0;
+}
+
+.sk3-face {
+  position: absolute;
+  left: 0; top: 0;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+.sk3-over { opacity: .92; }
+
+/* 模型底部的地面阴影 */
+.sk3-host::after {
+  content: '';
+  position: absolute;
+  bottom: 42px;
+  width: 46%;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(15, 23, 42, .18), transparent 72%);
+  pointer-events: none;
+}
+
+.skin3d-hint {
+  position: absolute;
+  left: 0; right: 0;
+  bottom: 8px;
+  text-align: center;
+  font-size: var(--fs-11);
+  color: var(--text-faint);
+  pointer-events: none;
+}
+
+.skin3d-empty {
+  font-size: var(--fs-12);
+  color: var(--text-muted);
+}
 
 .skin-config { display: flex; flex-direction: column; gap: var(--sp-4); min-width: 0; }
 
@@ -1002,4 +1067,41 @@ body {
 }
 .bg-blur, .bg-photo, .bg-tint {
   border-radius: var(--r-window);
+}
+
+
+/* ---------------- 开服 ---------------- */
+.panel-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-5) var(--sp-4);
+}
+.srv-state {
+  font-size: var(--fs-11);
+  padding: 2px 10px;
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  color: var(--text-muted);
+}
+.srv-state.on { background: var(--ok-soft, #dcf5e6); color: var(--ok-text, #127a44); }
+.srv-state.busy { background: var(--accent-soft); color: var(--accent-text); }
+
+.srv-console {
+  margin: 0 var(--sp-5) var(--sp-5);
+  padding: var(--sp-3);
+  height: 260px;
+  overflow: auto;
+  background: #0e1420;
+  color: #cbd5e1;
+  border-radius: var(--r-lg);
+  font-family: var(--mono, ui-monospace, Consolas, monospace);
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.srv-console:empty::before {
+  content: '（暂无输出）';
+  color: #64748b;
 }

@@ -48,6 +48,7 @@ const cnmod = require('./lib/cnmod');
 const ms = require('./lib/microsoft');
 const javaRuntime = require('./lib/java');
 const localskin = require('./lib/localskin');
+const serverLib = require('./lib/server');
 
 /* ============================================================
  * 便携根目录：exe 旁边的 FCL\ 文件夹
@@ -2044,4 +2045,59 @@ app.on('web-contents-created', (_e, contents) => {
 
 app.on('child-process-gone', (_e, details) => {
   log('error', `子进程退出：${details.type} / ${details.reason}（exitCode ${details.exitCode}）`);
+});
+
+
+/* ---------------- 一键开服 ---------------- */
+function serverDirFor(mc) {
+  return path.join(GAME_DIR, 'server-' + mc);
+}
+
+ipcMain.handle('server:info', async (_e, dir) => {
+  const d = dir || serverDirFor((UI_CFG.lastServerMc || '26.3'));
+  return { dir: d, info: serverLib.info(d), running: serverLib.isRunning() };
+});
+
+ipcMain.handle('server:create', async (_e, req) => {
+  const mc = req.mc;
+  const dir = req.dir || serverDirFor(mc);
+  patchCfg({ lastServerMc: mc });
+  log('info', `创建服务端：${mc}（${req.kind}）→ ${dir}`);
+  const r = await serverLib.create({
+    dir, mc,
+    kind: req.kind === 'vanilla' ? 'vanilla' : 'paper',
+    port: req.port || 25565,
+    mem: req.mem || 2048,
+    motd: req.motd,
+    onlineMode: req.onlineMode !== false,
+    maxPlayers: req.maxPlayers || 20,
+    onProgress: (p) => send('server:progress', p),
+  });
+  log('info', `服务端已就绪：${r.jar}`);
+  return { ok: true, ...r, info: serverLib.info(dir) };
+});
+
+ipcMain.handle('server:start', async (_e, req) => {
+  const dir = req.dir || serverDirFor(req.mc || '26.3');
+  const java = await findJava(req.javaPath);
+  if (!java.path) throw new Error('未检测到 Java，请先在设置里部署 Java 运行时');
+  log('info', '启动服务端：' + dir);
+  const r = await serverLib.start({
+    dir,
+    javaPath: java.path,
+    mem: req.mem,
+    onLog: (line) => send('server:log', line),
+    onExit: (code) => {
+      log('info', '服务端退出，代码 ' + code);
+      send('server:state', { running: false, code });
+    },
+  });
+  send('server:state', { running: true, pid: r.pid, heap: r.heap });
+  return { ok: true, ...r };
+});
+
+ipcMain.handle('server:stop', async () => {
+  const ok = await serverLib.stop();
+  send('server:state', { running: false, stopped: ok });
+  return { ok };
 });
