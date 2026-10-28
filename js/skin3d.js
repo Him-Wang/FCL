@@ -259,5 +259,15 @@
     scene = null;
   }
 
-  window.Skin3D = { build, clear };
+  /** 调试/测试用：固定视角 */
+  function setView(rotX, rotY) {
+    if (!scene) return false;
+    if (typeof rotX === 'number') scene.rotX = rotX;
+    if (typeof rotY === 'number') scene.rotY = rotY;
+    scene.dragging = true; // 暂停自转
+    applyTransform();
+    return true;
+  }
+
+  window.Skin3D = { build, clear, setView };
 })();

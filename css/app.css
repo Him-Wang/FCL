@@ -1105,3 +1105,21 @@ body {
   content: '（暂无输出）';
   color: #64748b;
 }
+
+.srv-cmdbar {
+  display: flex;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-5) var(--sp-5);
+}
+.srv-cmdbar input {
+  flex: 1;
+  font-family: var(--mono, ui-monospace, Consolas, monospace);
+  font-size: 12px;
+}
+.srv-online {
+  font-size: var(--fs-11);
+  padding: 1px 8px;
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  color: var(--text-muted);
+}

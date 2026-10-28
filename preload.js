@@ -22,11 +22,17 @@ contextBridge.exposeInMainWorld('launcher', {
   setCloseAsk: (v) => ipcRenderer.invoke('app:set-close-ask', v),
   setCloseBehavior: (v) => ipcRenderer.invoke('app:set-close-behavior', v),
 
+  // 联机
+  netInfo: () => ipcRenderer.invoke('net:info'),
+  netFirewall: (port) => ipcRenderer.invoke('net:firewall', port),
+  netUpnp: (req) => ipcRenderer.invoke('net:upnp', req),
+
   // 一键开服
   serverInfo: (dir) => ipcRenderer.invoke('server:info', dir),
   serverCreate: (req) => ipcRenderer.invoke('server:create', req),
   serverStart: (req) => ipcRenderer.invoke('server:start', req),
   serverStop: () => ipcRenderer.invoke('server:stop'),
+  serverCmd: (line) => ipcRenderer.invoke('server:cmd', line),
   onServerLog: (fn) => ipcRenderer.on('server:log', (_e, line) => fn(line)),
   onServerState: (fn) => ipcRenderer.on('server:state', (_e, st) => fn(st)),
   onServerProgress: (fn) => ipcRenderer.on('server:progress', (_e, p) => fn(p)),

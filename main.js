@@ -2010,7 +2010,14 @@ if (gotLock) app.whenReady().then(() => {
   });
 });
 
-app.on('before-quit', () => {
+app.on('before-quit', async () => {
+  // 退出启动器时，把自己启动的服务端一起关掉（借鉴 FMCL）
+  try {
+    if (serverLib.isRunning()) {
+      log('info', '退出启动器：正在关闭服务端…');
+      await serverLib.stop();
+    }
+  } catch (e) {}
   quitting = true;
 });
 
@@ -2096,8 +2103,86 @@ ipcMain.handle('server:start', async (_e, req) => {
   return { ok: true, ...r };
 });
 
+ipcMain.handle('server:cmd', async (_e, line) => {
+  const ok = serverLib.command(line);
+  if (ok) log('info', '服务端命令：' + line);
+  return { ok };
+});
+
 ipcMain.handle('server:stop', async () => {
   const ok = await serverLib.stop();
   send('server:state', { running: false, stopped: ok });
   return { ok };
+});
+
+
+/* ---------------- 联机 ---------------- */
+function lanAddresses() {
+  const out = [];
+  const ifs = os.networkInterfaces();
+  for (const name of Object.keys(ifs)) {
+    for (const a of ifs[name] || []) {
+      if (a.family === 'IPv4' && !a.internal) {
+        out.push({ iface: name, address: a.address });
+      }
+    }
+  }
+  // 常见的局域网段排前面
+  out.sort((x, y) => {
+    const rank = (ip) =>
+      ip.startsWith('192.168.') ? 0 : ip.startsWith('10.') ? 1 : /^172.(1[6-9]|2\d|3[01])\./.test(ip) ? 2 : 3;
+    return rank(x.address) - rank(y.address);
+  });
+  return out;
+}
+
+async function publicIp() {
+  const urls = [
+    'https://api.ipify.org?format=json',
+    'https://ipv4.icanhazip.com',
+    'https://myip.ipip.net/json',
+  ];
+  for (const u of urls) {
+    try {
+      const txt = await net.getText([u], 8000);
+      const s = String(txt).trim();
+      const ip = (s.match(/(\d{1,3}(?:\.\d{1,3}){3})/) || [])[1];
+      if (ip) return ip;
+    } catch (e) {}
+  }
+  return '';
+}
+
+ipcMain.handle('net:info', async () => {
+  const lan = lanAddresses();
+  const pub = await publicIp().catch(() => '');
+  return { lan, publicIp: pub };
+});
+
+/** 在 Windows 防火墙放行端口（尽力而为，失败不报错） */
+ipcMain.handle('net:firewall', async (_e, port) => {
+  const p = Number(port) || 25565;
+  if (process.platform !== 'win32') return { ok: false, message: '仅 Windows 需要放行防火墙' };
+  const { exec } = require('child_process');
+  const run = (cmd) =>
+    new Promise((resolve) => exec(cmd, { windowsHide: true }, (err, stdout, stderr) => resolve({ err, stdout, stderr })));
+  const name = 'FCL Server ' + p;
+  await run('netsh advfirewall firewall delete rule name="' + name + '"');
+  const r = await run(
+    'netsh advfirewall firewall add rule name="' + name + '" dir=in action=allow protocol=TCP localport=' + p,
+  );
+  if (r.err) return { ok: false, message: '需要管理员权限（' + String(r.stderr || r.err.message).trim() + '）' };
+  return { ok: true, message: '已在防火墙放行 TCP ' + p };
+});
+
+/** 用 UPnP 尝试端口映射（路由器不支持就返回失败，不做保证） */
+ipcMain.handle('net:upnp', async (_e, req) => {
+  const port = Number((req && req.port) || 25565);
+  try {
+    const upnp = require('./lib/upnp');
+    const r = await upnp.mapPort({ port, description: 'FCL Minecraft Server' });
+    return r;
+  } catch (e) {
+    return { ok: false, message: String((e && e.message) || e) || 'UPnP 不可用' };
+  }
 });

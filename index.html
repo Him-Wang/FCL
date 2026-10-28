@@ -388,10 +388,46 @@
         </div>
 
         <div class="panel">
+          <div class="panel-head"><span class="panel-title">联机</span>
+            <span class="muted" id="lanState">启动服务端后，把地址发给朋友</span>
+          </div>
+          <div class="form grid">
+            <div class="field wide">
+              <label>局域网地址（同一 Wi-Fi / 同一路由器的朋友用这个）</label>
+              <div class="row">
+                <input id="lanAddr" type="text" readonly placeholder="启动服务端后自动显示" />
+                <button type="button" class="btn ghost" data-act="lan-copy" data-id="lan">复制</button>
+              </div>
+            </div>
+            <div class="field wide">
+              <label>公网地址（外网朋友用这个，需要路由器做端口映射）</label>
+              <div class="row">
+                <input id="wanAddr" type="text" readonly placeholder="点右侧按钮检测公网 IP" />
+                <button type="button" class="btn ghost" data-act="lan-copy" data-id="wan">复制</button>
+                <button type="button" class="btn ghost" data-act="lan-refresh">检测</button>
+              </div>
+            </div>
+            <div class="field wide">
+              <div class="row wrap">
+                <button type="button" class="btn" data-act="lan-firewall">防火墙放行端口</button>
+                <button type="button" class="btn" data-act="lan-upnp">尝试自动映射（UPnP）</button>
+              </div>
+              <p class="tip" id="lanHint">同一局域网直接连「局域网地址」即可。外网联机需要端口映射：能自动就自动，不能就在路由器里把 <code>TCP 25565</code> 转发到本机。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
           <div class="panel-head"><span class="panel-title">控制台</span>
             <span class="muted" id="srvHint">创建后这里会显示服务端输出</span>
+            <span class="srv-online" id="srvOnline">在线 0</span>
           </div>
           <pre class="srv-console" id="srvConsole" tabindex="0"></pre>
+          <div class="srv-cmdbar">
+            <input id="srvCmd" type="text" placeholder="输入服务端命令，例如 say 你好 / list / stop，回车发送" />
+            <button type="button" class="btn sm" data-act="srv-cmd">发送</button>
+            <button type="button" class="btn sm ghost" data-act="srv-clear">清屏</button>
+          </div>
         </div>
       </section>
 

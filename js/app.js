@@ -111,7 +111,7 @@
     $$('.page').forEach((s) => s.classList.toggle('active', s.id === 'page-' + p));
     $('.content').scrollTop = 0;
     if (p === 'accounts') renderSkin();
-    if (p === 'server') renderServerPage();
+    if (p === 'server') { renderServerPage(); refreshLanInfo(); }
   }
 
   /* ---------------- 开服 ---------------- */
@@ -125,6 +125,21 @@
     box.textContent += (box.textContent ? '\n' : '') + line;
     if (box.textContent.length > 200000) box.textContent = box.textContent.slice(-120000);
     if (atBottom) box.scrollTop = box.scrollHeight;
+    trackOnline(line);
+  }
+
+  /** 从服务端日志里数在线玩家（和 FMCL 的控制台同款思路） */
+  function trackOnline(line) {
+    const s = state.srv;
+    s.players = s.players || {};
+    let m = /(\S+) joined the game/.exec(line);
+    if (m) s.players[m[1]] = true;
+    m = /(\S+) left the game/.exec(line);
+    if (m) delete s.players[m[1]];
+    // list 命令输出：There are 2 of a max of 20 players online: A, B
+    m = /There are (\d+) of a max/.exec(line);
+    const el = $('#srvOnline');
+    if (el) el.textContent = '在线 ' + (m ? Number(m[1]) : Object.keys(s.players).length);
   }
 
   function renderSrvState() {
@@ -163,6 +178,58 @@
     renderSrvState();
   }
 
+  /* ---------------- 联机 ---------------- */
+  async function refreshLanInfo() {
+    if (!hasElectron || !L.netInfo) return null;
+    try {
+      const r = await L.netInfo();
+      state.lan = r;
+      const port = +($('#srvPort') && $('#srvPort').value) || 25565;
+      const lan = r.lan && r.lan[0] ? r.lan[0].address : '';
+      const lanEl = $('#lanAddr');
+      if (lanEl) lanEl.value = lan ? lan + ':' + port : '';
+      const wanEl = $('#wanAddr');
+      if (wanEl) wanEl.value = r.publicIp ? r.publicIp + ':' + port : '';
+      const st = $('#lanState');
+      if (st) st.textContent = r.publicIp ? '公网 IP：' + r.publicIp : '只检测到局域网地址';
+      return r;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async function lanCopy(which) {
+    const el = which === 'wan' ? $('#wanAddr') : $('#lanAddr');
+    if (!el || !el.value) { toast('还没有地址，先启动服务端'); return; }
+    try {
+      await navigator.clipboard.writeText(el.value);
+      toast('已复制：' + el.value, 3000);
+    } catch (e) {
+      el.select();
+      document.execCommand('copy');
+      toast('已复制：' + el.value, 3000);
+    }
+  }
+
+  async function lanFirewall() {
+    const port = +($('#srvPort') && $('#srvPort').value) || 25565;
+    if (!hasElectron || !L.netFirewall) return;
+    const r = await L.netFirewall(port);
+    srvLog('[联机] ' + (r.message || (r.ok ? '已放行' : '失败')));
+    toast(r.message || (r.ok ? '已放行' : '放行失败'), 5000);
+  }
+
+  async function lanUpnp() {
+    const port = +($('#srvPort') && $('#srvPort').value) || 25565;
+    if (!hasElectron || !L.netUpnp) return;
+    const st = $('#lanState');
+    if (st) st.textContent = '正在尝试 UPnP…';
+    const r = await L.netUpnp({ port });
+    srvLog('[联机] ' + (r.message || (r.ok ? '映射成功' : '映射失败')));
+    if (st) st.textContent = r.ok ? 'UPnP 已映射，外网可用公网地址' : 'UPnP 不可用，需要手动端口转发';
+    toast(r.message || (r.ok ? '映射成功' : '映射失败'), 6000);
+  }
+
   async function srvCreate() {
     const btn = $('#srvCreateBtn');
     const mc = ($('#srvMc').value || '').trim();
@@ -184,7 +251,13 @@
       state.srv.port = port;
       state.srv.mem = mem;
       srvLog('[FCL] 服务端已创建：' + r.jar + '（' + mc + '，端口 ' + port + '）');
-      toast('服务端已创建，可以点「启动」了', 4000);
+      if (r.portChanged) {
+        toast('端口 ' + r.requestedPort + ' 被占用，已改用 ' + r.port, 6000);
+        srvLog('[FCL] 端口 ' + r.requestedPort + ' 被占用，已改用 ' + r.port);
+        const pe = $('#srvPort'); if (pe) pe.value = r.port;
+      } else {
+        toast('服务端已创建，可以点「启动」了', 4000);
+      }
     } catch (e) {
       srvLog('[错误] ' + ipcMsg(e));
       toast('创建失败：' + ipcMsg(e), 5000);
@@ -201,6 +274,7 @@
       const r = await L.serverStart({ dir: state.srv.dir, mem: +$('#srvMem').value || 2048 });
       state.srv.running = true;
       srvLog('[FCL] 服务端已启动（PID ' + r.pid + '，堆 ' + r.heap + 'MB）');
+      refreshLanInfo();
     } catch (e) {
       const msg = ipcMsg(e);
       srvLog('[错误] ' + msg);
@@ -223,6 +297,25 @@
       }
     }
     renderSrvState();
+  }
+
+  async function srvCmd() {
+    const el = $('#srvCmd');
+    const line = (el && el.value || '').trim();
+    if (!line) return;
+    if (!state.srv.running) { toast('服务端还没启动'); return; }
+    try {
+      const r = await L.serverCmd(line);
+      if (r && r.ok) {
+        srvLog('> ' + line);
+        el.value = '';
+        el.focus();
+      } else {
+        toast('命令发送失败');
+      }
+    } catch (e) {
+      toast('命令发送失败：' + ipcMsg(e), 4000);
+    }
   }
 
   async function srvStop() {
@@ -1005,7 +1098,7 @@
         ? '先在上方添加或选中一个账号，再给它设置皮肤。'
         : isMs
           ? '正版账号：登录时已自动同步官方皮肤；换好皮肤和模型后点「上传到微软」，官方服务器立即生效。'
-          : '离线账号：点「在游戏内生效」会自动安装 CustomSkinLoader 并把皮肤写入它的目录；装好后先进一次游戏让 CSL 生成配置，之后进游戏就能看到。';
+          : '离线账号：点「在游戏内生效」会自动装 CustomSkinLoader 并写入皮肤；如果当前是原版版本，会先自动装一个同版本 Fabric 并切过去。装好后先进一次游戏让 CSL 生成配置。';
     }
 
     drawSkin(a);
@@ -1137,16 +1230,53 @@
     }
   }
 
+    /** 找一个同 MC 版本的 Fabric；没有就装一个，并切换过去 */
+  async function ensureFabricForSkin(mc) {
+    const existing = installedList().find((v) => /^fabric-loader-/.test(v) && mcOf(v) === mc);
+    if (existing) return existing;
+    toast(`正在安装 Fabric（${mc}）…`, 6000);
+    appendLog('info', `为皮肤安装 Fabric：${mc}`);
+    await L.install({ kind: 'fabric', mc, gameDir: gameDir(), assets: false, javaPath: state.settings.javaPath });
+    for (let i = 0; i < 90; i++) {
+      await new Promise((r) => setTimeout(r, 2000));
+      await refreshEnv();
+      const v = installedList().find((x) => /^fabric-loader-/.test(x) && mcOf(x) === mc);
+      if (v) return v;
+    }
+    throw new Error('Fabric 安装超时，请到「版本管理」里手动安装');
+  }
+
   async function enableLocalSkin() {
     const a = curAcc();
     if (!a) { toast('请先选择一个账号'); return; }
     if (!skinOf(a).dataUrl) { toast('请先选择一个皮肤文件'); return; }
     if (!hasElectron) { toast('需要桌面版'); return; }
-    const mc = mcOf(state.version);
-    const loader = loaderOf(state.version);
+    let mc = mcOf(state.version);
+    let loader = loaderOf(state.version);
     if (!loader) {
-      toast('当前是原版版本，皮肤需要 Fabric / Forge 版本；先装个 Fabric 版本再切换过来', 5000);
-      return;
+      // 原版加载不了皮肤模组：自动装一个同版本 Fabric 并切过去
+      const btn0 = $('#localSkinBtn');
+      const old0 = btn0.textContent;
+      btn0.disabled = true;
+      btn0.textContent = '准备 Fabric…';
+      try {
+        const v = await ensureFabricForSkin(mc);
+        state.version = v;
+        save();
+        renderHero();
+        renderVersions();
+        mc = mcOf(v);
+        loader = loaderOf(v);
+        toast('已切到 ' + v + '，继续应用皮肤', 4000);
+      } catch (e) {
+        toast(ipcMsg(e), 6000);
+        btn0.disabled = false;
+        btn0.textContent = old0;
+        return;
+      } finally {
+        btn0.disabled = false;
+        btn0.textContent = old0;
+      }
     }
     const btn = $('#localSkinBtn');
     const old = btn.textContent;
@@ -2092,6 +2222,12 @@
       case 'import-mod': importContent('mod'); break;
       case 'import-pack': importContent(state.store.type === 'shader' ? 'shader' : 'resourcepack'); break;
       case 'srv-kind': state.srv.kind = id === 'vanilla' ? 'vanilla' : 'paper'; renderSrvState(); break;
+      case 'srv-cmd': srvCmd(); break;
+      case 'srv-clear': { const b = $('#srvConsole'); if (b) b.textContent = ''; break; }
+      case 'lan-refresh': refreshLanInfo(); break;
+      case 'lan-copy': lanCopy(id); break;
+      case 'lan-firewall': lanFirewall(); break;
+      case 'lan-upnp': lanUpnp(); break;
       case 'srv-create': srvCreate(); break;
       case 'srv-start': srvStart(); break;
       case 'srv-stop': srvStop(); break;
@@ -2210,6 +2346,12 @@
     $('#loginOffline').classList.toggle('hidden', m);
     $('#loginMs').classList.toggle('hidden', !m);
   }));
+
+  if ($('#srvCmd')) {
+    $('#srvCmd').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); srvCmd(); }
+    });
+  }
 
   $('#memRange').addEventListener('input', (e) => {
     const mem = +e.target.value;
