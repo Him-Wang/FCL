@@ -22,6 +22,16 @@ contextBridge.exposeInMainWorld('launcher', {
   setCloseAsk: (v) => ipcRenderer.invoke('app:set-close-ask', v),
   setCloseBehavior: (v) => ipcRenderer.invoke('app:set-close-behavior', v),
 
+  // 崩溃诊断
+  onCrash: (fn) => ipcRenderer.on('mc:crash', (_e, info) => fn(info)),
+  crashExport: (req) => ipcRenderer.invoke('crash:export', req),
+  reveal: (p) => ipcRenderer.invoke('shell:reveal', p),
+
+  // 自动更新
+  checkUpdate: () => ipcRenderer.invoke('app:check-update'),
+  downloadUpdate: (req) => ipcRenderer.invoke('app:download-update', req),
+  onUpdateProgress: (fn) => ipcRenderer.on('update:progress', (_e, pr) => fn(pr)),
+
   // 联机
   netInfo: () => ipcRenderer.invoke('net:info'),
   netFirewall: (port) => ipcRenderer.invoke('net:firewall', port),

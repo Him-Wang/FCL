@@ -49,6 +49,8 @@ const ms = require('./lib/microsoft');
 const javaRuntime = require('./lib/java');
 const localskin = require('./lib/localskin');
 const serverLib = require('./lib/server');
+const crashLib = require('./lib/crash');
+const updater = require('./lib/update');
 
 /* ============================================================
  * 便携根目录：exe 旁边的 FCL\ 文件夹
@@ -249,6 +251,7 @@ let win = null;
 let tray = null;
 let quitting = false; // 真正退出（而不是隐藏到托盘）
 let gameProcess = null;
+let gameStartedAt = 0;
 let gameWindowReady = false;
 
 // 日志里别写完整用户目录，截图/分享时更干净
@@ -1570,7 +1573,8 @@ ipcMain.handle('mc:launch', async (_e, req) => {
     watcher.on('minecraft-window-ready', () => {
       gameWindowReady = true;
       log('info', '游戏窗口已就绪');
-      send('mc:game-ready', {});
+      gameStartedAt = Date.now();
+    send('mc:game-ready', {});
     });
     watcher.on('minecraft-exit', (e) => {
       gameProcess = null;
@@ -1589,7 +1593,20 @@ ipcMain.handle('mc:launch', async (_e, req) => {
     gameProcess = null;
     const crash = code === 0 ? null : readLatestCrash(req.gameDir);
     log(code === 0 ? 'info' : 'warn', `进程结束，退出代码 ${code}`);
+    {
+    // 退出码非 0，或这次启动后产生了新的崩溃报告 / hs_err，都算"需要诊断"
+    const since = gameStartedAt || (Date.now() - 10 * 60 * 1000);
+    const diag = crashLib.summarizeCrash(req.gameDir, since);
+    const shouldWarn = code !== 0 || diag.crashed;
+    if (shouldWarn) {
+      diag.exitCode = code;
+      if (!diag.description && crash && crash.description) diag.description = crash.description;
+      log('error', `崩溃诊断：退出码 ${code} · ${diag.description || '未注明原因'}`);
+      (diag.diagnosis || []).forEach((d) => log('warn', `  · ${d.tag}：${d.hint}`));
+      send('mc:crash', { gameDir: req.gameDir, ...diag });
+    }
     send('mc:game-exit', { code, crash });
+  }
   });
 
   return { ok: true, pid: proc.pid };
@@ -2184,5 +2201,55 @@ ipcMain.handle('net:upnp', async (_e, req) => {
     return r;
   } catch (e) {
     return { ok: false, message: String((e && e.message) || e) || 'UPnP 不可用' };
+  }
+});
+
+
+/* ---------------- 崩溃报告导出 ---------------- */
+ipcMain.handle('crash:export', async (_e, req) => {
+  const info = req && req.info ? req.info : {};
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const outDir = path.join(ROOT, 'crash-reports');
+  const outFile = path.join(outDir, 'FCL-crash-' + stamp + '.zip');
+  try {
+    await crashLib.exportZip({ gameDir: (req && req.gameDir) || GAME_DIR, outFile, info, launcherLog: path.join(LOG_DIR, 'app.log') });
+    log('info', '崩溃报告已导出：' + outFile);
+    shell.showItemInFolder(outFile);
+    return { ok: true, file: outFile };
+  } catch (e) {
+    return { ok: false, error: String((e && e.message) || e) };
+  }
+});
+
+/* ---------------- 自动更新 ---------------- */
+ipcMain.handle('app:check-update', async () => {
+  const current = app.getVersion();
+  try {
+    const r = await updater.check(current);
+    return { ok: true, current, ...r };
+  } catch (e) {
+    return { ok: false, current, error: String((e && e.message) || e) };
+  }
+});
+
+ipcMain.handle('app:download-update', async (_e, req) => {
+  const url = req && req.url;
+  if (!url) return { ok: false, error: '没有下载地址' };
+  try {
+    const dir = path.join(ROOT, 'updates');
+    const r = await updater.download(url, dir, (p) => send('update:progress', p));
+    log('info', '更新包已下载：' + r.path);
+    return { ok: true, ...r };
+  } catch (e) {
+    return { ok: false, error: String((e && e.message) || e) };
+  }
+});
+
+ipcMain.handle('shell:reveal', async (_e, p) => {
+  try {
+    shell.showItemInFolder(String(p));
+    return true;
+  } catch (e) {
+    return false;
   }
 });

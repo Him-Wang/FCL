@@ -178,6 +178,115 @@
     renderSrvState();
   }
 
+  /* ---------------- 崩溃诊断 ---------------- */
+  function showCrashDialog(info) {
+    if (!info) return;
+    state.lastCrash = info;
+    const d = info.diagnosis || [];
+    const rows = [];
+    rows.push(`<p class="crash-line"><b>退出码</b> <span class="mono">${info.exitCode == null ? '未知' : info.exitCode}</span></p>`);
+    if (info.description) rows.push(`<p class="crash-line"><b>崩溃描述</b> ${esc(info.description)}</p>`);
+    if (info.exception) rows.push(`<p class="crash-line"><b>异常</b> <span class="mono">${esc(info.exception)}</span></p>`);
+    if (d.length) {
+      rows.push('<div class="crash-diag">' + d.map((x) =>
+        `<div class="crash-tip"><span class="crash-tag">${esc(x.tag)}</span><span>${esc(x.hint)}</span></div>`
+      ).join('') + '</div>');
+    } else {
+      rows.push('<p class="tip">没有命中已知的崩溃模式，可以看下面的日志尾部或导出报告。</p>');
+    }
+    if (info.logTail) {
+      rows.push(`<details class="crash-details"><summary>游戏日志尾部</summary><pre class="crash-log">${esc(info.logTail)}</pre></details>`);
+    }
+    rows.push(`<div class="row wrap" style="margin-top:var(--sp-3)">
+      <button type="button" class="btn primary" data-act="crash-export">导出诊断包</button>
+      ${info.report ? '<button type="button" class="btn" data-act="crash-open">打开崩溃报告</button>' : ''}
+      <button type="button" class="btn ghost" data-act="crash-close">知道了</button>
+    </div>`);
+    openModal('游戏崩溃了', rows.join(''));
+  }
+
+  window.__fclShowCrash = (info) => showCrashDialog(info);
+
+  async function crashExport() {
+    if (!hasElectron || !L.crashExport) return;
+    const r = await L.crashExport({ gameDir: gameDir(), info: state.lastCrash || {} });
+    if (r && r.ok) toast('已导出：' + r.file, 6000);
+    else toast('导出失败：' + ((r && r.error) || '未知错误'), 6000);
+  }
+
+  /* ---------------- 自动更新 ---------------- */
+  let updateState = null;
+
+  function renderUpdateState() {
+    const verEl = $('#appVer');
+    if (verEl && state.paths && state.paths.version) verEl.textContent = '当前版本 v' + state.paths.version;
+    const hint = $('#updateHint');
+    const dl = $('#downloadUpdateBtn');
+    const op = $('#openUpdatePageBtn');
+    if (!hint) return;
+    if (!updateState) return;
+    if (updateState.error) {
+      hint.textContent = '检查失败：' + updateState.error;
+      return;
+    }
+    if (!updateState.hasUpdate) {
+      hint.textContent = '已是最新版本（v' + updateState.current + '）';
+      if (dl) dl.classList.add('hidden');
+      if (op) op.classList.add('hidden');
+      return;
+    }
+    hint.textContent = '发现新版本 v' + updateState.latest + (updateState.asset ? '（' + Math.round(updateState.asset.size / 1024 / 1024) + ' MB）' : '');
+    if (dl) dl.classList.toggle('hidden', !updateState.asset);
+    if (op) op.classList.remove('hidden');
+  }
+
+  async function checkUpdate() {
+    if (!hasElectron || !L.checkUpdate) { toast('桌面端才支持检查更新'); return; }
+    const btn = $('#checkUpdateBtn');
+    const old = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '检查中…';
+    try {
+      const r = await L.checkUpdate();
+      updateState = r;
+      renderUpdateState();
+      if (r.ok && r.hasUpdate) toast('发现新版本 v' + r.latest, 5000);
+      else if (r.ok) toast('已是最新版本', 3000);
+    } catch (e) {
+      updateState = { error: ipcMsg(e) };
+      renderUpdateState();
+    } finally {
+      btn.disabled = false;
+      btn.textContent = old;
+    }
+  }
+
+  async function downloadUpdate() {
+    if (!updateState || !updateState.asset) return;
+    const btn = $('#downloadUpdateBtn');
+    const old = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '下载中…';
+    const off = L.onUpdateProgress ? L.onUpdateProgress((p) => {
+      btn.textContent = '下载 ' + (p.percent || 0) + '%';
+    }) : null;
+    try {
+      const r = await L.downloadUpdate({ url: updateState.asset.url });
+      if (r.ok) {
+        toast('下载完成，已打开所在文件夹：' + r.path, 8000);
+        if (L.reveal) L.reveal(r.path);
+        $('#updateHint').textContent = '新版已下载：' + r.path + '（关闭当前窗口后运行它）';
+      } else {
+        toast('下载失败：' + r.error, 6000);
+      }
+    } catch (e) {
+      toast('下载失败：' + ipcMsg(e), 6000);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = old;
+    }
+  }
+
   /* ---------------- 联机 ---------------- */
   async function refreshLanInfo() {
     if (!hasElectron || !L.netInfo) return null;
@@ -1532,6 +1641,7 @@
     $('#optIsolate').checked = s.isolate;
     renderThemeFab();
     renderJavaState();
+    renderUpdateState();
   }
 
   /* ---------------- 外观切换：右下角悬浮按钮 ---------------- */
@@ -2222,6 +2332,12 @@
       case 'import-mod': importContent('mod'); break;
       case 'import-pack': importContent(state.store.type === 'shader' ? 'shader' : 'resourcepack'); break;
       case 'srv-kind': state.srv.kind = id === 'vanilla' ? 'vanilla' : 'paper'; renderSrvState(); break;
+      case 'crash-export': crashExport(); break;
+      case 'crash-open': if (hasElectron && state.lastCrash && state.lastCrash.report) L.open(state.lastCrash.report); break;
+      case 'crash-close': closeModal(); break;
+      case 'check-update': checkUpdate(); break;
+      case 'download-update': downloadUpdate(); break;
+      case 'open-update-page': if (hasElectron) L.open('https://github.com/Him-Wang/FCL/releases'); break;
       case 'srv-cmd': srvCmd(); break;
       case 'srv-clear': { const b = $('#srvConsole'); if (b) b.textContent = ''; break; }
       case 'lan-refresh': refreshLanInfo(); break;
@@ -2442,6 +2558,7 @@
 
   if (hasElectron) {
     L.onLog((l) => appendLog(l.lv, l.msg));
+    if (L.onCrash) L.onCrash((info) => showCrashDialog(info));
     L.onGameExit((e) => {
       if (!running) return;
       stopGameState();
