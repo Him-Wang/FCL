@@ -22,6 +22,8 @@ contextBridge.exposeInMainWorld('launcher', {
   setCloseAsk: (v) => ipcRenderer.invoke('app:set-close-ask', v),
   setCloseBehavior: (v) => ipcRenderer.invoke('app:set-close-behavior', v),
 
+  onStall: (fn) => ipcRenderer.on('mc:stall', (_e, info) => fn(info)),
+
   // 崩溃诊断
   onCrash: (fn) => ipcRenderer.on('mc:crash', (_e, info) => fn(info)),
   crashExport: (req) => ipcRenderer.invoke('crash:export', req),
@@ -33,6 +35,13 @@ contextBridge.exposeInMainWorld('launcher', {
   onUpdateProgress: (fn) => ipcRenderer.on('update:progress', (_e, pr) => fn(pr)),
 
   relaunchAdmin: () => ipcRenderer.invoke('app:relaunch-admin'),
+
+  perfOptimize: (req) => ipcRenderer.invoke('perf:optimize', req),
+
+  shaderScan: (req) => ipcRenderer.invoke('shader:scan', req),
+
+  // 环境自检
+  diagRun: (req) => ipcRenderer.invoke('diag:run', req),
 
   // 依赖自检
   depsCheck: (req) => ipcRenderer.invoke('deps:check', req),

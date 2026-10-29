@@ -1185,3 +1185,32 @@ body {
   font-size: var(--fs-12);
 }
 .deps-item b { font-family: var(--mono, ui-monospace, Consolas, monospace); }
+
+/* ---------------- 环境自检 ---------------- */
+.diag-icon {
+  flex: none;
+  width: 18px; height: 18px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  font-size: 12px; font-weight: 700;
+  background: var(--accent-soft); color: var(--accent-text);
+}
+.deps-item.diag-ok .diag-icon { background: var(--ok-soft, #dcf5e6); color: var(--ok-text, #127a44); }
+.deps-item.diag-warn { background: var(--warn-soft, #fff4e5); }
+.deps-item.diag-warn .diag-icon { background: #ffe2b8; color: #8a4b00; }
+.deps-item.diag-error { background: #fdecec; }
+.deps-item.diag-error .diag-icon { background: #f8d7d7; color: #b3261e; }
+.diag-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.diag-text .muted { font-size: var(--fs-11); }
+
+/* ---------------- 光影兼容性标签 ---------------- */
+.gl-tag {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: var(--r-pill);
+  font-size: 10.5px;
+  line-height: 16px;
+  font-weight: 600;
+}
+.gl-tag.ok { background: var(--ok-soft, #dcf5e6); color: var(--ok-text, #127a44); }
+.gl-tag.bad { background: #fdecec; color: #b3261e; }

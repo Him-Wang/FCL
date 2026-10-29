@@ -111,6 +111,10 @@
     $$('.page').forEach((s) => s.classList.toggle('active', s.id === 'page-' + p));
     $('.content').scrollTop = 0;
     if (p === 'accounts') renderSkin();
+    if (p === 'store') {
+      if (state.store.type === 'shader') scanShaders().then(() => renderPacks());
+      else renderPacks();
+    }
     if (p === 'server') { renderServerPage(); refreshLanInfo(); if ($('#p2pRoom') && !$('#p2pRoom').value) p2pGenRoom(); p2pRender(); }
   }
 
@@ -339,6 +343,94 @@
     toast(r.message || (r.ok ? '映射成功' : '映射失败'), 6000);
   }
 
+  /* ---------------- 运行环境自检 ---------------- */
+  const DIAG_ICON = { ok: '✓', warn: '!', error: '×' };
+
+  function renderDiag(r) {
+    const box = $('#diagBox');
+    if (!box) return;
+    box.classList.remove('hidden');
+    const st = $('#diagState');
+    const body = $('#diagBody');
+    if (st) {
+      const s = (r && r.summary) || { errors: 0, warns: 0 };
+      st.textContent = `错误 ${s.errors} · 警告 ${s.warns} · 模组 ${r.modCount} · 光影 ${r.shaderCount}`;
+      st.style.color = s.errors ? 'var(--danger, #c0392b)' : s.warns ? 'var(--warn-text, #8a4b00)' : '';
+    }
+    if (!body) return;
+    body.innerHTML = (r.checks || [])
+      .map((c) => {
+        const icon = DIAG_ICON[c.level] || '·';
+        const action = c.action
+          ? `<button type="button" class="btn sm ghost" data-act="diag-fix" data-id="${esc(c.action.type)}" data-ver="${esc(c.action.mc || '')}">${esc(
+              c.action.type === 'install-iris' ? '装 Iris'
+              : c.action.type === 'install-fabric' ? '装 Fabric 并切换'
+              : c.action.type === 'fix-deps' ? '补装依赖'
+              : c.action.type === 'open-mods' ? '打开 mods'
+              : c.action.type === 'deploy-java' ? '部署 Java'
+              : '处理')}</button>`
+          : '';
+        return `<div class="deps-item diag-${c.level}"><span class="diag-icon">${icon}</span><span class="diag-text"><b>${esc(c.title)}</b>${c.detail ? '<span class="muted">' + esc(c.detail) + '</span>' : ''}</span>${action}</div>`;
+      })
+      .join('');
+    const foot = $('#diagBody');
+    if (foot && r.summary && (r.summary.errors || r.summary.warns)) {
+      foot.insertAdjacentHTML(
+        'beforeend',
+        '<div class="row wrap" style="margin-top:var(--sp-3)"><button type="button" class="btn primary" data-act="perf-optimize">一键降配（卡顿/未响应时用）</button>' +
+          '<span class="muted" style="font-size:11px">把视距调到 8、画质快速、关实体阴影、限 60 帧</span></div>'
+      );
+    }
+  }
+
+  async function perfOptimize() {
+    if (!hasElectron || !L.perfOptimize) return;
+    const r = await L.perfOptimize({ gameDir: (state.env && state.env.gameDir) || gameDir() });
+    if (r && r.ok) {
+      appendLog('info', '已写入低配画质：视距 8 / 快速画质 / 关阴影 / 60 帧');
+      toast('已调成低配画质，下次启动生效', 6000);
+    } else {
+      toast('降配失败：' + ((r && r.error) || '未知错误'), 6000);
+    }
+  }
+
+  async function diagRun() {
+    if (!hasElectron || !L.diagRun) { toast('桌面端才支持环境自检'); return; }
+    const btn = $('#diagBtn');
+    const old = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = '自检中…'; }
+    try {
+      const r = await L.diagRun({ gameDir: (state.env && state.env.gameDir) || gameDir(), version: state.version });
+      state.diag = r;
+      renderDiag(r);
+      if (r.summary.errors) toast(`自检发现 ${r.summary.errors} 个问题，按提示处理即可`, 7000);
+      else if (r.summary.warns) toast(`自检通过，有 ${r.summary.warns} 条提醒`, 5000);
+      else toast('环境一切正常', 3000);
+    } catch (e) {
+      toast('自检失败：' + ipcMsg(e), 5000);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = old; }
+    }
+  }
+
+  async function diagFix(kind, ver) {
+    if (kind === 'install-iris') { const b = $('#irisBtn') || document.createElement('button'); installIris(b); return; }
+    if (kind === 'install-fabric') {
+      try {
+        toast('正在安装 Fabric…', 5000);
+        const v = await ensureFabricForSkin(ver || mcOf(state.version));
+        state.version = v; save(); renderHero(); renderVersions();
+        toast('已切到 ' + v, 4000);
+        diagRun();
+      } catch (e) { toast('装 Fabric 失败：' + ipcMsg(e), 6000); }
+      return;
+    }
+    if (kind === 'fix-deps') { await depsFix(); diagRun(); return; }
+    if (kind === 'open-mods') { if (hasElectron && state.diag && state.diag.modsDir) L.open(state.diag.modsDir); return; }
+    if (kind === 'open-shaders') { toast('进游戏：选项 → 视频设置 → 光影包，选一个再点「应用」', 8000); return; }
+    if (kind === 'deploy-java') { deployJava(); return; }
+  }
+
   /* ---------------- 模组依赖自检 ---------------- */
   /** 自动补装缺失依赖（Fabric API 这类）；返回补装了什么 */
   async function autoFixDeps(reason) {
@@ -454,6 +546,21 @@
     return true;
   }
 
+  let p2pAdminShown = false;
+  function p2pShowAdminModal() {
+    if (p2pAdminShown) return;
+    p2pAdminShown = true;
+    openModal('P2P 需要管理员权限', `
+      <p class="tip">EasyTier 要创建一块虚拟网卡，Windows 下必须由管理员权限完成，刚才启动失败就是这里被拦住了。</p>
+      <pre class="crash-log" style="max-height:120px">Failed to add Easytier to firewall allowlist  error=拒绝访问 (0x80070005)
+tun device error  err=rust tun error Failed to create adapter</pre>
+      <div class="row wrap" style="margin-top:var(--sp-3)">
+        <button type="button" class="btn primary" data-act="p2p-admin">以管理员身份重启启动器</button>
+        <button type="button" class="btn ghost" data-act="modal-close">知道了</button>
+      </div>
+    `);
+  }
+
   function p2pRender() {
     const st = state.p2p || {};
     const ipEl = $('#p2pIp');
@@ -474,6 +581,7 @@
 
   async function p2pStart() {
     if (!hasElectron || !L.p2pStart) { toast('桌面端才支持 P2P'); return; }
+    p2pAdminShown = false;
     const room = ($('#p2pRoom').value || '').trim();
     if (!room) { toast('请先填房间号'); return; }
     const btn = $('#p2pStartBtn');
@@ -486,7 +594,7 @@
         secret: ($('#p2pSecret').value || '').trim(),
         peer: ($('#p2pPeer').value || '').trim(),
       });
-      state.p2p = { running: true, role: r.role, virtualIp: r.virtualIp, room: r.room };
+      state.p2p = { running: true, role: r.role, virtualIp: r.virtualIp, room: r.room, startedAt: Date.now() };
       srvLog('[P2P] 已启动：' + (r.role === 'host' ? '房主' : '加入') + '，虚拟 IP ' + (r.virtualIp || '待分配'));
       p2pRender();
       toast(r.role === 'host' ? '房主已就绪：把虚拟 IP 发给朋友' : '已加入房间', 5000);
@@ -1189,6 +1297,16 @@
     return { isShader, list, enabled };
   }
 
+  async function scanShaders() {
+    if (!hasElectron || !L.shaderScan) return null;
+    try {
+      state.shaderScan = await L.shaderScan({ gameDir: (state.env && state.env.gameDir) || gameDir() });
+      return state.shaderScan;
+    } catch (e) {
+      return null;
+    }
+  }
+
   function renderPacks() {
     const panel = $('#packPanel');
     if (!panel) return;
@@ -1198,7 +1316,11 @@
     }
     const { isShader, list, enabled } = packInfo();
     panel.classList.remove('hidden');
-    $('#packTitle').textContent = `${isShader ? '已安装光影' : '已安装材质包'} · ${list.length} 个`;
+    const sc = isShader ? state.shaderScan : null;
+    const okN = sc ? (sc.packs || []).filter((x) => x.ok).length : 0;
+    $('#packTitle').textContent = sc
+      ? `已安装光影 · ${list.length} 个（${okN} 个可跑 · 显卡 OpenGL ${sc.gl.version}）`
+      : `已安装光影 · ${list.length} 个`;
     if ($('#irisBtn')) {
       $('#irisBtn').classList.toggle('hidden', !isShader);
       $('#irisBtn').textContent = /^fabric/i.test(String(state.version))
@@ -1216,7 +1338,14 @@
       return `<div class="row-item">
         <div class="row-main">
           <div class="row-title">${esc(p.name.replace(/\.(zip|jar)$/i, ''))} ${on ? '<span class="badge on">已启用</span>' : ''}</div>
-          <div class="row-sub">${p.size} KB · ${isShader ? 'shaderpacks' : 'resourcepacks'}</div>
+          <div class="row-sub">${p.size} KB · ${isShader ? 'shaderpacks' : 'resourcepacks'}${(function () {
+            if (!isShader || !sc) return '';
+            const hit = (sc.packs || []).find((x) => x.file === p.name);
+            if (!hit) return '';
+            return hit.ok
+              ? ' · <span class="gl-tag ok">✓ 可跑（GLSL ' + hit.glsl + '）</span>'
+              : ' · <span class="gl-tag bad">需要 OpenGL ' + hit.need + '</span>';
+          })()}</div>
         </div>
         <div class="row-actions">
           ${isShader ? '' : `<button type="button" class="switch ${on ? 'on' : ''}" role="switch" aria-checked="${on ? 'true' : 'false'}" aria-label="${on ? '停用' : '启用'} ${esc(p.name)}" data-act="pack-toggle" data-id="${esc(p.name)}"></button>`}
@@ -2219,7 +2348,11 @@
           setProgress(10 + pct * 0.5);
         }) : null;
         try {
-          await L.verify({ version: state.version, gameDir: gameDir(), assets: true });
+          const vr = await L.verify({ version: state.version, gameDir: gameDir(), assets: true });
+          if (vr && vr.ok === false) {
+            appendLog('warn', '文件校验没成功（可能缺文件，先继续启动）：' + String(vr.error || '').split('\n')[0]);
+            toast('校验没成功，先继续启动试试', 5000);
+          }
         } finally {
           if (typeof offV === 'function') offV();
           if (L.offVerifyProgress) L.offVerifyProgress();
@@ -2558,7 +2691,10 @@
       case 'queue-drop': if (hasElectron) L.queueRemove(+id).then(refreshQueue); break;
       case 'queue-clear': if (hasElectron) L.queueClear().then(refreshQueue); break;
 
-      case 'store-tab': state.store.type = id; state.store.items = []; renderStore(); doStoreSearch(); break;
+      case 'store-tab': state.store.type = id; state.store.items = []; renderStore(); doStoreSearch();
+        if (id === 'shader') { scanShaders().then(() => renderPacks()); }
+        else renderPacks();
+        break;
       case 'store-search': doStoreSearch(); break;
       case 'store-install': storeInstall(id, el); break;
       case 'pack-toggle': togglePack(id); break;
@@ -2566,6 +2702,11 @@
       case 'import-mod': importContent('mod'); break;
       case 'import-pack': importContent(state.store.type === 'shader' ? 'shader' : 'resourcepack'); break;
       case 'srv-kind': state.srv.kind = id === 'vanilla' ? 'vanilla' : 'paper'; renderSrvState(); break;
+      case 'diag-run': diagRun(); break;
+      case 'perf-optimize': perfOptimize(); break;
+      case 'open-shaders': if (hasElectron) toast('进游戏：选项 → 视频设置 → 光影包，选一个再点「应用」', 8000); break;
+      case 'diag-fix': diagFix(id, el.dataset.ver); break;
+      case 'diag-close': { const b = $('#diagBox'); if (b) b.classList.add('hidden'); break; }
       case 'deps-check': depsCheck(); break;
       case 'deps-fix': depsFix(); break;
       case 'deps-close': { const b = $('#depsBox'); if (b) b.classList.add('hidden'); break; }
@@ -2808,7 +2949,7 @@
   if (hasElectron) {
     if (L.onP2pLog) L.onP2pLog((line) => {
       srvLog(line);
-      if (p2pNeedAdmin(line)) state.p2p = Object.assign({ running: false }, state.p2p);
+      if (p2pNeedAdmin(line)) { state.p2p = Object.assign({ running: false }, state.p2p); p2pShowAdminModal(); }
       if (/ipv4/i.test(line)) {
         const m = /(\d+\.\d+\.\d+\.\d+)/.exec(line);
         if (m) { state.p2p = Object.assign({ running: true }, state.p2p, { virtualIp: m[1] }); p2pRender(); }
@@ -2817,10 +2958,19 @@
     if (L.onP2pState) L.onP2pState((st) => {
       state.p2p = Object.assign({}, state.p2p, st);
       p2pRender();
-      if (st && st.running === false) srvLog('[P2P] 进程已退出');
+      if (st && st.running === false) {
+        srvLog('[P2P] 进程已退出' + (st.code != null ? '（退出码 ' + st.code + '）' : ''));
+        // 刚启动就退出，基本就是权限问题
+        if (state.p2p && state.p2p.startedAt && Date.now() - state.p2p.startedAt < 60000) p2pShowAdminModal();
+      }
     });
     L.onLog((l) => appendLog(l.lv, l.msg));
     if (L.onCrash) L.onCrash((info) => showCrashDialog(info));
+    if (L.onStall) L.onStall(() => {
+      if (!running) return;
+      appendLog('warn', '游戏已经 45 秒没有输出，可能卡住了（窗口被最小化 / 首次加载字体都会这样）');
+      toast('游戏好像卡住了：先等一下，或点启动按钮结束进程', 8000);
+    });
     L.onGameExit((e) => {
       if (!running) return;
       stopGameState();

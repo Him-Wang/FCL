@@ -28,7 +28,6 @@ const OPTIMIZED_JVM_ARGS = [
   '-XX:MaxGCPauseMillis=200',
   '-XX:+UnlockExperimentalVMOptions',
   '-XX:+DisableExplicitGC',
-  '-XX:+AlwaysPreTouch',
   '-XX:G1NewSizePercent=30',
   '-XX:G1MaxNewSizePercent=40',
   '-XX:G1HeapRegionSize=8M',
@@ -53,6 +52,8 @@ const crashLib = require('./lib/crash');
 const updater = require('./lib/update');
 const p2p = require('./lib/p2p');
 const deps = require('./lib/deps');
+const diag = require('./lib/diag');
+const shaderCheck = require('./lib/shaders');
 
 /* ============================================================
  * 便携根目录：exe 旁边的 FCL\ 文件夹
@@ -254,6 +255,8 @@ let tray = null;
 let quitting = false; // 真正退出（而不是隐藏到托盘）
 let gameProcess = null;
 let gameStartedAt = 0;
+let lastGameOutputAt = 0;
+let stallTimer = null;
 let gameWindowReady = false;
 
 // 日志里别写完整用户目录，截图/分享时更干净
@@ -1479,11 +1482,17 @@ ipcMain.handle('sys:env', async (_e, opt) => {
 /* ---------------- 版本加载器列表 ---------------- */
 ipcMain.handle('mc:verify', async (_e, req) => {
   log('info', `校验游戏文件：${req.version}`);
-  const r = await installer.verify(req.version, req.gameDir, (p) => {
-    send('mc:verify-progress', p);
-  }, req.assets !== false);
-  log('info', `文件校验完成：${r}`);
-  return r;
+  try {
+    const r = await installer.verify(req.version, req.gameDir, (p) => {
+      send('mc:verify-progress', p);
+    }, req.assets !== false);
+    log('info', `文件校验完成：${r}`);
+    return { ok: true, result: r };
+  } catch (err) {
+    const msg = String((err && err.message) || err);
+    log('warn', '文件校验没成功（继续启动）：' + msg.split('\n')[0]);
+    return { ok: false, error: msg };
+  }
 });
 
 /* ---------------- 崩溃报告 ---------------- */
@@ -1567,8 +1576,8 @@ ipcMain.handle('mc:launch', async (_e, req) => {
       log('game', s.replace(/\u001b\[[0-9;]*m/g, '').slice(0, 200));
     });
   };
-  proc.stdout.on('data', push);
-  proc.stderr.on('data', push);
+  proc.stdout.on('data', (d) => { lastGameOutputAt = Date.now(); push(d); });
+  proc.stderr.on('data', (d) => { lastGameOutputAt = Date.now(); push(d); });
 
   try {
     const watcher = createMinecraftProcessWatcher(proc);
@@ -1576,6 +1585,8 @@ ipcMain.handle('mc:launch', async (_e, req) => {
       gameWindowReady = true;
       log('info', '游戏窗口已就绪');
       gameStartedAt = Date.now();
+    lastGameOutputAt = Date.now();
+    startStallWatch();
     send('mc:game-ready', {});
     });
     watcher.on('minecraft-exit', (e) => {
@@ -2207,6 +2218,25 @@ ipcMain.handle('net:upnp', async (_e, req) => {
 });
 
 
+/* ---------------- 卡住看门狗 ---------------- */
+function startStallWatch() {
+  if (stallTimer) clearInterval(stallTimer);
+  stallTimer = setInterval(() => {
+    if (!gameProcess) {
+      clearInterval(stallTimer);
+      stallTimer = null;
+      return;
+    }
+    const quiet = Date.now() - (lastGameOutputAt || Date.now());
+    if (quiet > 45000) {
+      clearInterval(stallTimer);
+      stallTimer = null;
+      log('warn', '游戏 45 秒没有输出，可能卡住了（常见原因：窗口被最小化 / 首次加载字体）');
+      send('mc:stall', { quietMs: quiet });
+    }
+  }, 5000);
+}
+
 /* ---------------- 崩溃报告导出 ---------------- */
 ipcMain.handle('crash:export', async (_e, req) => {
   const info = req && req.info ? req.info : {};
@@ -2345,4 +2375,65 @@ ipcMain.handle('deps:fix', async (_e, req) => {
     installed,
     failed,
   };
+});
+
+
+/* ---------------- 运行环境自检 ---------------- */
+ipcMain.handle('diag:run', async (_e, req) => {
+  const gameDir = (req && req.gameDir) || GAME_DIR;
+  const java = await findJava(req && req.javaPath).catch(() => ({ path: '', version: '' }));
+  const r = diag.diagnose({
+    gameDir,
+    version: (req && req.version) || UI_CFG.lastVersion || '',
+    javaPath: java.path,
+    javaVersion: java.version,
+  });
+  log('info', `环境自检：错误 ${r.summary.errors} / 警告 ${r.summary.warns}（模组 ${r.modCount}，光影 ${r.shaderCount}）`);
+  return r;
+});
+
+
+/* ---------------- 一键降配 ---------------- */
+ipcMain.handle('perf:optimize', async (_e, req) => {
+  const gameDir = (req && req.gameDir) || GAME_DIR;
+  const file = path.join(gameDir, 'options.txt');
+  const want = {
+    renderDistance: '8',
+    simulationDistance: '8',
+    graphicsPreset: '"fast"',
+    entityShadows: 'false',
+    enableVsync: 'false',
+    maxFps: '60',
+    ao: 'true',
+    particles: '1',
+  };
+  try {
+    let lines = fs.existsSync(file) ? fs.readFileSync(file, 'utf8').split(/\r?\n/) : [];
+    const seen = new Set();
+    lines = lines.map((line) => {
+      const k = line.split(':')[0];
+      if (Object.prototype.hasOwnProperty.call(want, k)) {
+        seen.add(k);
+        return k + ':' + want[k];
+      }
+      return line;
+    });
+    for (const k of Object.keys(want)) if (!seen.has(k)) lines.push(k + ':' + want[k]);
+    fs.mkdirSync(gameDir, { recursive: true });
+    fs.writeFileSync(file, lines.join('\n'), 'utf8');
+    log('info', '已把游戏画质调到低配档（视距 8 / 快速画质 / 关阴影 / 60 帧上限）');
+    return { ok: true, file };
+  } catch (e) {
+    return { ok: false, error: String((e && e.message) || e) };
+  }
+});
+
+
+/* ---------------- 光影兼容性预检 ---------------- */
+ipcMain.handle('shader:scan', async (_e, req) => {
+  const gameDir = (req && req.gameDir) || GAME_DIR;
+  const r = shaderCheck.scan(gameDir);
+  const okN = r.packs.filter((p) => p.ok).length;
+  log('info', `光影预检：GL ${r.gl.version}，${r.packs.length} 个包里 ${okN} 个可跑`);
+  return r;
 });

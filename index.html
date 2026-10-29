@@ -213,6 +213,7 @@
             <button type="button" class="btn primary" data-act="import-mod"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>导入模组</button>
             <button type="button" class="btn ghost" data-act="browse-mods"><svg class="ic" aria-hidden="true"><use href="#i-folder"/></svg>打开模组文件夹</button>
             <button type="button" class="btn ghost" data-act="refresh-mods"><svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg>刷新</button>
+            <button type="button" class="btn primary" data-act="diag-run" id="diagBtn"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>环境自检</button>
             <button type="button" class="btn" data-act="deps-check" id="depsCheckBtn"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>依赖检查</button>
           </div>
           <div class="search">
@@ -224,6 +225,16 @@
           <div class="list" id="modList"></div>
         </div>
         <div class="hint" id="modStat"></div>
+
+        <div class="panel hidden" id="diagBox">
+          <div class="panel-head"><span class="panel-title">环境自检</span>
+            <span class="muted" id="diagState"></span>
+          </div>
+          <div id="diagBody" class="deps-body"></div>
+          <div class="panel-foot">
+            <button type="button" class="btn ghost" data-act="diag-close">关闭</button>
+          </div>
+        </div>
 
         <div class="panel hidden" id="depsBox">
           <div class="panel-head"><span class="panel-title">依赖检查</span>
