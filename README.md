@@ -204,12 +204,14 @@ exe 未做代码签名，属于常见误报。可下载后自行校验 SHA256，
 
 ## 致谢
 
-- [@xmcl/core](https://github.com/Voxelum/x-minecraft-launcher) · [@xmcl/user](https://github.com/Voxelum/x-minecraft-launcher)
-- [Modrinth](https://modrinth.com) API · [MC百科](https://www.mcmod.cn)
+- [Electron](https://www.electronjs.org) · [@xmcl/core](https://github.com/Voxelum/x-minecraft-launcher) · [@xmcl/user](https://github.com/Voxelum/x-minecraft-launcher)
+- [EasyTier](https://github.com/EasyTier/EasyTier)（内置 2.6.4，P2P 虚拟组网）· [CustomSkinLoader](https://github.com/xfl03/MCLoader)（内置构建，MIT）
+- [Modrinth](https://modrinth.com) API · [MC百科](https://www.mcmod.cn) · [PaperMC](https://papermc.io) · Fabric / Forge / NeoForge · [Iris](https://irisshaders.dev)
 - [BMCLAPI](https://bmclapidoc.bangbang93.com) · 阿里云 / 腾讯云 maven 镜像
 - [Adoptium](https://adoptium.net) · 清华 TUNA · 华为云 OpenJDK 镜像
-- [CustomSkinLoader](https://github.com/xfl03/MCLoader)（内置构建，MIT）
 - 界面重构来自 **[PR #1](https://github.com/Him-Wang/FCL/pull/1)**（作者 [@ImAlexBlock](https://github.com/ImAlexBlock)）：样式分层、深色模式与对比度修复、无障碍改造、`design.md`
+
+> 以上项目与镜像站均为各自作者所有，FCL 只做集成；名字同样出现在程序「设置 → 关于」面板与 Windows 文件属性里。
 
 ## 作者
 

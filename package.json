@@ -1,7 +1,7 @@
 {
   "name": "fcl",
   "productName": "FCL",
-  "version": "1.4.6-test",
+  "version": "1.4.6",
   "description": "FishCraftLauncher (FCL) — PCL 风格的 Minecraft 桌面启动器（Electron）",
   "main": "main.js",
   "scripts": {
@@ -15,6 +15,7 @@
   "build": {
     "appId": "com.fcl.launcher",
     "productName": "FCL",
+    "copyright": "Copyright © 2026 Hermintway · 共同创造：DeepSeek Harness、WorkBuddy · 界面重构：AlexBlock",
     "directories": {
       "output": "dist"
     },
@@ -23,7 +24,8 @@
         "portable"
       ],
       "icon": "build/icon.ico",
-      "artifactName": "FCL-${version}-${arch}.${ext}"
+      "artifactName": "FCL-${version}-${arch}.${ext}",
+      "legalTrademarks": "FCL · FishCraftLauncher（见 README 致谢与设置-关于）"
     },
     "nsis": {
       "oneClick": false,
