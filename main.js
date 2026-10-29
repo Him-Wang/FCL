@@ -1826,6 +1826,12 @@ function fspRename(from, to) {
 /* ---------------- 微软登录 ---------------- */
 ipcMain.handle('ms:start', async (_e, clientId) => ms.startDeviceLogin(clientId));
 ipcMain.handle('ms:poll', async (_e, req) => ms.pollLogin(req.clientId, req.deviceCode, req.expires));
+/* 用保存的 refresh_token 静默续期，避免每天重新登录 */
+ipcMain.handle('ms:refresh', async (_e, req) => {
+  const acc = await ms.refreshToken((req && req.refreshToken) || '', (req && req.clientId) || '');
+  log('info', '微软登录已续期：' + (acc.name || '-'));
+  return acc;
+});
 
 /* ---------------- 微软登录：内嵌登录窗口（玩家不用申请 Azure 应用） ---------------- */
 let msLoginWin = null;
@@ -1878,6 +1884,8 @@ async function openMicrosoftLogin() {
         log('info', '微软登录：已拿到授权码，正在换取 Minecraft 账号…');
         const tok = await ms.exchangeCode(code);
         const acc = await ms.finishWithToken(tok.access_token);
+        acc.msRefreshToken = tok.refresh_token || '';
+        acc.msClientId = ms.LIVE_CLIENT_ID;
         const d = acc.diag || {};
         log(
           'info',
@@ -1944,6 +1952,8 @@ ipcMain.handle('ms:complete-url', async (_e, raw) => {
   log('info', '微软登录：正在用浏览器回调里的 code 换取账号');
   const tok = await ms.exchangeCode(code);
   const acc = await ms.finishWithToken(tok.access_token);
+  acc.msRefreshToken = tok.refresh_token || '';
+  acc.msClientId = ms.LIVE_CLIENT_ID;
   const d = acc.diag || {};
   log(
     'info',

@@ -118,6 +118,7 @@ contextBridge.exposeInMainWorld('launcher', {
   msLogin: () => ipcRenderer.invoke('ms:login'),
   msBrowserLogin: () => ipcRenderer.invoke('ms:browser-login'),
   msCompleteUrl: (url) => ipcRenderer.invoke('ms:complete-url', url),
+  msRefresh: (req) => ipcRenderer.invoke('ms:refresh', req),
 
   modToggle: (req) => ipcRenderer.invoke('mc:mod-toggle', req),
   modDelete: (req) => ipcRenderer.invoke('mc:mod-delete', req),

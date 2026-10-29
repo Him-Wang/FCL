@@ -84,6 +84,78 @@
   const now = () => new Date().toTimeString().slice(0, 8);
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const curAcc = () => state.accounts.find((a) => a.id === state.currentAccount) || null;
+
+  /* ---------------- 微软账号续期 ----------------
+   * Minecraft 服务的 accessToken 只活 24 小时，过去只存了它，于是每天都要重新登录。
+   * 现在同时保存微软的 refresh_token，令牌快过期时静默换新的；换不动才提示重新登录。 */
+  function jwtExp(tok) {
+    try {
+      const seg = String(tok || '').split('.')[1];
+      if (!seg) return 0;
+      const b64 = seg.replace(/-/g, '+').replace(/_/g, '/');
+      const pad = b64 + '='.repeat((4 - (b64.length % 4)) % 4);
+      const j = JSON.parse(atob(pad));
+      return j && j.exp ? j.exp * 1000 : 0;
+    } catch (e) { return 0; }
+  }
+  const tokenStale = (a) => {
+    if (!a || a.type !== 'microsoft') return false;
+    if (!a.accessToken) return true;
+    const exp = jwtExp(a.accessToken);
+    if (!exp) return false;          // 解析不出来就按可用处理，交给启动时的真实报错
+    return exp - Date.now() < 5 * 60 * 1000;
+  };
+
+  async function refreshMicrosoftAccount(a, opt) {
+    const silent = !!(opt && opt.silent);
+    if (!a || a.type !== 'microsoft') return a;
+    if (!a.refreshToken) {
+      a.tokenError = '没有保存 refresh_token，需要重新登录';
+      return a;
+    }
+    if (!hasElectron || !L.msRefresh) return a;
+    try {
+      const r = await L.msRefresh({ refreshToken: a.refreshToken, clientId: a.clientId || '' });
+      if (!r || !r.accessToken) throw new Error('没有拿到新的访问令牌');
+      a.accessToken = r.accessToken;
+      a.refreshToken = r.msRefreshToken || a.refreshToken;
+      if (r.msClientId) a.clientId = r.msClientId;
+      if (r.uuid) a.uuid = r.uuid;
+      if (r.name) a.name = r.name;
+      if (r.skinDataUrl) {
+        a.skin = { variant: r.skinVariant || 'classic', dataUrl: r.skinDataUrl };
+        try {
+          const head = await skinHeadDataUrl(a.skin.dataUrl, 64);
+          if (head) a.avatar = head;
+        } catch (e) {}
+      }
+      a.tokenAt = Date.now();
+      delete a.tokenError;
+      save();
+      return a;
+    } catch (e) {
+      a.tokenError = (e && e.message) || String(e);
+      save();
+      if (!silent) throw e;
+      return a;
+    }
+  }
+
+  async function ensureFreshMicrosoftToken() {
+    const a = curAcc();
+    if (!a || a.type !== 'microsoft' || !tokenStale(a)) return a;
+    appendLog('info', '微软登录令牌已过期，正在静默续期…');
+    setLaunchText('续期微软登录…');
+    await refreshMicrosoftAccount(a, { silent: true });
+    if (a.accessToken && !tokenStale(a)) {
+      appendLog('info', '微软登录已续期，无需重新登录');
+      renderHero();
+      renderAccounts();
+      return a;
+    }
+    throw new Error('微软登录已过期（' + (a.tokenError || '未知原因') + '），请到「账号管理」重新登录后再启动');
+  }
+
   const gameDir = () => state.settings.gameDir || (state.env && state.env.gameDir) || '';
   const isInstalled = (id) => (state.env ? state.env.installedVersions.includes(id) : state.installed.includes(id));
 
@@ -1933,6 +2005,9 @@ tun device error  err=rust tun error Failed to create adapter</pre>
           <span>${a.type === 'microsoft' ? '微软账号' : '离线账号'} · ${esc((a.uuid || '').slice(0, 18))}</span>
         </div>
         <div class="row-actions">
+          ${a.type === 'microsoft' && tokenStale(a)
+            ? `<span class="badge" title="${esc(a.refreshToken ? '启动时会自动续期' : '需要重新登录一次')}">${a.refreshToken ? '待续期' : '需重新登录'}</span>`
+            : ''}
           ${a.id === state.currentAccount ? '<span class="badge">使用中</span>'
             : `<button type="button" class="btn sm" data-act="use-acc" data-id="${esc(a.id)}">使用</button>`}
           <button type="button" class="icon-btn" data-act="del-acc" data-id="${esc(a.id)}" aria-label="删除账号 ${esc(a.name)}" title="删除账号"><svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg></button>
@@ -2379,6 +2454,9 @@ tun device error  err=rust tun error Failed to create adapter</pre>
         save();
       }
 
+      // 3.6) 微软账号：令牌过期就先静默续期，续不动再让玩家重新登录
+      await ensureFreshMicrosoftToken();
+
       // 4) 启动
       setProgress(92);
       setLaunchText('正在启动…');
@@ -2475,6 +2553,9 @@ tun device error  err=rust tun error Failed to create adapter</pre>
       type: 'microsoft',
       uuid: r && r.uuid,
       accessToken: r && r.accessToken,
+      refreshToken: (r && r.msRefreshToken) || '',
+      clientId: (r && r.msClientId) || '',
+      tokenAt: Date.now(),
       avatar: (r && r.avatar) || makeAvatar((r && r.name) || 'MS', 'random', 8),
       skin: r && r.skinDataUrl ? { variant: r.skinVariant || 'classic', dataUrl: r.skinDataUrl } : undefined,
     };
@@ -3047,6 +3128,19 @@ tun device error  err=rust tun error Failed to create adapter</pre>
     refreshJava();
     refreshSkinLib();
     refreshPaths();
+
+    // 微软账号：启动时令牌已过期就先在后台静默续期，成功则不打扰玩家
+    try {
+      const bootAcc = curAcc();
+      if (bootAcc && bootAcc.type === 'microsoft' && bootAcc.refreshToken && tokenStale(bootAcc)) {
+        refreshMicrosoftAccount(bootAcc, { silent: true }).then(() => {
+          renderHero();
+          renderAccounts();
+          if (!tokenStale(bootAcc)) appendLog('info', '微软登录已自动续期');
+          else if (bootAcc.tokenError) appendLog('warn', '微软登录续期失败：' + bootAcc.tokenError);
+        });
+      }
+    } catch (e) {}
 
     refreshEnv().then(async () => {
       appendLog('info', `已连接本机环境：${shortPath(gameDir())}`);
