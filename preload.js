@@ -22,17 +22,17 @@ contextBridge.exposeInMainWorld('launcher', {
   setCloseAsk: (v) => ipcRenderer.invoke('app:set-close-ask', v),
   setCloseBehavior: (v) => ipcRenderer.invoke('app:set-close-behavior', v),
 
-  onStall: (fn) => ipcRenderer.on('mc:stall', (_e, info) => fn(info)),
+  onStall: (fn) => sub('mc:stall', fn),
 
   // 崩溃诊断
-  onCrash: (fn) => ipcRenderer.on('mc:crash', (_e, info) => fn(info)),
+  onCrash: (fn) => sub('mc:crash', fn),
   crashExport: (req) => ipcRenderer.invoke('crash:export', req),
   reveal: (p) => ipcRenderer.invoke('shell:reveal', p),
 
   // 自动更新
   checkUpdate: () => ipcRenderer.invoke('app:check-update'),
   downloadUpdate: (req) => ipcRenderer.invoke('app:download-update', req),
-  onUpdateProgress: (fn) => ipcRenderer.on('update:progress', (_e, pr) => fn(pr)),
+  onUpdateProgress: (fn) => sub('update:progress', fn),
 
   relaunchAdmin: () => ipcRenderer.invoke('app:relaunch-admin'),
 
@@ -46,14 +46,14 @@ contextBridge.exposeInMainWorld('launcher', {
   // 依赖自检
   depsCheck: (req) => ipcRenderer.invoke('deps:check', req),
   depsFix: (req) => ipcRenderer.invoke('deps:fix', req),
-  onDepsProgress: (fn) => ipcRenderer.on('deps:progress', (_e, pr) => fn(pr)),
+  onDepsProgress: (fn) => sub('deps:progress', fn),
 
   // P2P 联机
   p2pStatus: () => ipcRenderer.invoke('p2p:status'),
   p2pStart: (req) => ipcRenderer.invoke('p2p:start', req),
   p2pStop: () => ipcRenderer.invoke('p2p:stop'),
-  onP2pLog: (fn) => ipcRenderer.on('p2p:log', (_e, l) => fn(l)),
-  onP2pState: (fn) => ipcRenderer.on('p2p:state', (_e, s) => fn(s)),
+  onP2pLog: (fn) => sub('p2p:log', fn),
+  onP2pState: (fn) => sub('p2p:state', fn),
 
   // 联机
   netInfo: () => ipcRenderer.invoke('net:info'),
@@ -66,9 +66,9 @@ contextBridge.exposeInMainWorld('launcher', {
   serverStart: (req) => ipcRenderer.invoke('server:start', req),
   serverStop: () => ipcRenderer.invoke('server:stop'),
   serverCmd: (line) => ipcRenderer.invoke('server:cmd', line),
-  onServerLog: (fn) => ipcRenderer.on('server:log', (_e, line) => fn(line)),
-  onServerState: (fn) => ipcRenderer.on('server:state', (_e, st) => fn(st)),
-  onServerProgress: (fn) => ipcRenderer.on('server:progress', (_e, p) => fn(p)),
+  onServerLog: (fn) => sub('server:log', fn),
+  onServerState: (fn) => sub('server:state', fn),
+  onServerProgress: (fn) => sub('server:progress', fn),
   onTrayHint: (cb) => sub('tray:hint', cb),
   onAlreadyRunning: (cb) => sub('app:already-running', cb),
   onAskClose: (cb) => sub('app:ask-close', cb),

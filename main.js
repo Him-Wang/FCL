@@ -254,6 +254,7 @@ let win = null;
 let tray = null;
 let quitting = false; // 真正退出（而不是隐藏到托盘）
 let gameProcess = null;
+let gameStopByUser = false; // 用户点了「结束游戏」：退出后不要再弹崩溃诊断
 let gameStartedAt = 0;
 let lastGameOutputAt = 0;
 let stallTimer = null;
@@ -1570,6 +1571,14 @@ ipcMain.handle('mc:launch', async (_e, req) => {
   gameProcess = proc;  log('info', `Minecraft 进程已启动（PID ${proc.pid}）`);
 
   let lines = 0;
+  /* watcher 的 minecraft-exit 和 proc 的 exit 都会触发：只回传一次，
+     否则界面上会弹两次“游戏已退出”、崩溃弹窗也会重复 */
+  let exitSent = false;
+  const finishExit = (code, crash) => {
+    if (exitSent) return;
+    exitSent = true;
+    send('mc:game-exit', { code, crash: crash || null });
+  };
   const push = (raw) => {
     String(raw).split(/\r?\n/).filter((s) => s.trim()).slice(0, 6).forEach((s) => {
       if (lines++ > 300) return;
@@ -1591,22 +1600,26 @@ ipcMain.handle('mc:launch', async (_e, req) => {
     });
     watcher.on('minecraft-exit', (e) => {
       gameProcess = null;
+      if (gameStopByUser) { finishExit(e.code, null); return; }
       const crash = e.code === 0 ? null : readLatestCrash(req.gameDir);
       log(e.code === 0 ? 'info' : 'error', `游戏退出，代码 ${e.code}${e.crashReport ? '（已生成崩溃报告）' : ''}`);
       if (crash) {
         log('error', `崩溃原因：${crash.description || '(未注明)'}${crash.error ? ' —— ' + crash.error : ''}`);
         log('error', `崩溃报告：${crash.file}`);
       }
-      send('mc:game-exit', { code: e.code, crash });
+      finishExit(e.code, crash);
     });
   } catch (e) {}
 
   proc.on('exit', (code) => {
-    if (!gameProcess) return;
     gameProcess = null;
     const crash = code === 0 ? null : readLatestCrash(req.gameDir);
     log(code === 0 ? 'info' : 'warn', `进程结束，退出代码 ${code}`);
-    {
+    if (gameStopByUser) {
+      gameStopByUser = false;
+      finishExit(code, null);
+      return;
+    }
     // 退出码非 0，或这次启动后产生了新的崩溃报告 / hs_err，都算"需要诊断"
     const since = gameStartedAt || (Date.now() - 10 * 60 * 1000);
     const diag = crashLib.summarizeCrash(req.gameDir, since);
@@ -1618,8 +1631,7 @@ ipcMain.handle('mc:launch', async (_e, req) => {
       (diag.diagnosis || []).forEach((d) => log('warn', `  · ${d.tag}：${d.hint}`));
       send('mc:crash', { gameDir: req.gameDir, ...diag });
     }
-    send('mc:game-exit', { code, crash });
-  }
+    finishExit(code, crash);
   });
 
   return { ok: true, pid: proc.pid };
@@ -1627,6 +1639,7 @@ ipcMain.handle('mc:launch', async (_e, req) => {
 
 ipcMain.handle('mc:kill', async () => {
   if (!gameProcess) return false;
+  gameStopByUser = true;
   try { gameProcess.kill(); } catch (e) {}
   gameProcess = null;
   log('info', '已结束游戏进程');
@@ -2071,12 +2084,27 @@ app.on('web-contents-created', (_e, contents) => {
   });
   contents.on('will-navigate', (event, url) => {
     if (contents.__fclAllowNav) return;
-    if (url && !url.startsWith('file:')) {
+    let u = null;
+    try {
+      u = new URL(url);
+    } catch (err) {
       event.preventDefault();
-      try {
-        shell.openExternal(url);
-      } catch (err) {}
+      return;
     }
+    // 只放行启动器自己的页面（刷新 / hash 跳转）；其它 file:// 一律拦住：
+    // 否则把本地 HTML 拖进窗口，它就会带着 preload 跑起来，等于拿到 launcher API
+    if (u.protocol === 'file:') {
+      try {
+        const self = path.resolve(decodeURIComponent(u.pathname.replace(/^\//, '')));
+        if (self === path.resolve(__dirname, 'index.html')) return;
+      } catch (err) {}
+      event.preventDefault();
+      return;
+    }
+    event.preventDefault();
+    try {
+      shell.openExternal(url);
+    } catch (err) {}
   });
 });
 
@@ -2292,10 +2320,11 @@ ipcMain.handle('app:relaunch-admin', async () => {
   try {
     const { execFile } = require('child_process');
     const exe = process.execPath;
+    // 路径走环境变量，别拼进命令字符串（安装路径里带单引号时会被拆坏）
     execFile(
       'powershell.exe',
-      ['-NoProfile', '-Command', `Start-Process -FilePath '${exe}' -Verb RunAs`],
-      { windowsHide: true },
+      ['-NoProfile', '-NonInteractive', '-Command', 'Start-Process -FilePath $env:FCL_EXE -Verb RunAs'],
+      { windowsHide: true, env: Object.assign({}, process.env, { FCL_EXE: exe }) },
     );
     log('info', '正在以管理员身份重新启动：' + exe);
     setTimeout(() => {

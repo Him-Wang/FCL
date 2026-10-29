@@ -7,6 +7,8 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: false
     steps:
       - uses: actions/checkout@v4
 
@@ -19,15 +21,19 @@ jobs:
         run: npm ci
 
       - name: Syntax check
+        shell: pwsh
         run: |
-          node --check main.js
-          node --check preload.js
-          node --check js/app.js
-          node --check lib/installer.js
-          node --check lib/microsoft.js
+          $failed = @()
+          Get-ChildItem -Recurse -Filter *.js -File |
+            Where-Object { $_.FullName -notmatch '\\node_modules\\|\\dist\\' } |
+            ForEach-Object {
+              node --check $_.FullName
+              if ($LASTEXITCODE -ne 0) { $failed += $_.FullName }
+            }
+          if ($failed.Count) { throw "syntax errors: $($failed -join ', ')" }
 
-      - name: Package (unpacked, unsigned)
-        run: npx electron-builder --win --x64 --dir
+      - name: Package (portable exe, unsigned)
+        run: npx electron-builder --win portable --x64
 
       - name: Verify build output
         shell: pwsh
@@ -35,10 +41,15 @@ jobs:
           $asar = "dist/win-unpacked/resources/app.asar"
           if (-not (Test-Path $asar)) { throw "missing $asar" }
           "app.asar = {0:N0} bytes" -f (Get-Item $asar).Length
-          npx --yes @electron/asar list $asar | Select-Object -First 8
+          $exe = Get-ChildItem dist -Filter "FCL-*-x64.exe" | Select-Object -First 1
+          if (-not $exe) { throw "没有生成 portable exe" }
+          "exe = {0} ({1:N0} bytes)" -f $exe.Name, $exe.Length
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FCL-win-unpacked
-          path: dist/win-unpacked
+          name: FCL-win-x64
+          path: |
+            dist/FCL-*-x64.exe
+            dist/win-unpacked/resources/app.asar
+          if-no-files-found: error

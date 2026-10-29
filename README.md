@@ -4,10 +4,9 @@
 
 <p>
   <img alt="platform" src="https://img.shields.io/badge/Windows-x64-2b7bf0">
-  <img alt="platform" src="https://img.shields.io/badge/macOS-arm64%20%7C%20x64-2b7bf0">
-  <img alt="electron" src="https://img.shields.io/badge/Electron-33.4%20%2F%2043.8-47848f">
+  <img alt="electron" src="https://img.shields.io/badge/Electron-33.4-47848f">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-00c29a">
-  <img alt="version" src="https://img.shields.io/badge/version-1.3.10-4d6bfe">
+  <img alt="version" src="https://img.shields.io/badge/version-1.4.6-4d6bfe">
   <a href="https://github.com/Him-Wang/FCL/graphs/contributors"><img alt="contributors" src="https://img.shields.io/github/contributors/Him-Wang/FCL?color=2b7bf0&label=contributors"></a>
 </p>
 
@@ -70,7 +69,7 @@
 
 ### 绿色便携
 
-运行后不往用户目录写东西，全部收在 exe 同级（macOS 为 `~/Library/Application Support/FCL-Portable/`）：
+运行后不往用户目录写东西，全部收在 exe 同级：
 
 ```text
 FCL\
@@ -88,17 +87,14 @@ FCL\
 
 ## 下载
 
-Release 名称已按平台区分：**`FCL <版本> · Windows`** 与 **`FCL <版本> · macOS`**。
+Release 名称：**`FCL <版本> · Windows`**。
 
 | 平台 | 文件 | 说明 |
 | --- | --- | --- |
 | Windows x64 | `FCL-<版本>-x64.exe` | 单文件便携版，无需安装 |
-| macOS Apple Silicon（M1～M5 及以后） | `FCL-<版本>-mac-arm64.dmg` | 也可用同名 `.zip` |
-| macOS Intel | `FCL-<版本>-mac-x64.dmg` | 也可用同名 `.zip` |
 
 - Windows 首次启动没有 Java 也能用：点「启动游戏」会自动部署 Java
-- **macOS 首次打开**：右键 FCL →「打开」，或在「系统设置 → 隐私与安全性」里点「仍要打开」；提示「已损坏」时执行 `xattr -dr com.apple.quarantine /Applications/FCL.app`。详细步骤见 [macOS 安装指南](docs/macOS-安装指南.md)
-- 两个平台都未做代码签名，系统会提示一次，放行即可
+- 未做代码签名，首次运行 SmartScreen 会提示一次，点「更多信息 → 仍要运行」即可
 
 ## 从源码运行
 
@@ -109,11 +105,10 @@ npm install
 npm start
 ```
 
-要求：Node.js ≥ 18；Windows 10/11 x64 或 macOS 12+。
+要求：Node.js ≥ 18；Windows 10/11 x64。
 
 ```bash
 npm run dist       # Windows：产物 dist/FCL-<版本>-x64.exe
-npm run dist:mac   # macOS：产物 dist/FCL-<版本>-mac-<arch>.dmg / .zip
 ```
 
 > Windows 用 `tools\package-win.cmd` 打包更稳：它把临时目录、electron 二进制、镜像都固定在项目内，避免写到系统临时目录。
@@ -122,12 +117,12 @@ npm run dist:mac   # macOS：产物 dist/FCL-<版本>-mac-<arch>.dmg / .zip
 
 | 层 | 选型 |
 | --- | --- |
-| 桌面框架 | Electron 33.4（Windows）/ 43.8（macOS，避开 macOS 26/27 上的 GPU 线程崩溃）；无边框窗口 + 透明背景 + contextIsolation preload |
+| 桌面框架 | Electron 33.4；无边框窗口 + 透明背景 + contextIsolation preload |
 | 界面 | 原生 HTML / CSS / JavaScript，无前端框架 |
 | Minecraft 核心 | [@xmcl/core](https://github.com/Voxelum/x-minecraft-launcher)（版本解析、启动、进程监听）、[@xmcl/user](https://github.com/Voxelum/x-minecraft-launcher)（微软 OAuth2） |
 | 模组与资源 | Modrinth API、MC百科 |
 | 下载 | 自研 `lib/net.js`：连接 / 空闲超时、重定向跟随、镜像回退、原子 `.part` 下载、SHA-1 校验 |
-| 打包 | electron-builder（Windows portable 单文件 / macOS dmg + zip） |
+| 打包 | electron-builder（Windows portable 单文件） |
 
 国内网络优先走 **BMCLAPI / 阿里云 maven / 清华 Adoptium / 华为云 OpenJDK** 镜像，官方源兜底；`meta.fabricmc.net`、`maven.fabricmc.net` 在国内经常直连超时，所以 **Fabric / Forge 的元数据与依赖默认镜像优先**。
 
@@ -177,12 +172,6 @@ exe 未做代码签名，属于常见误报。可下载后自行校验 SHA256，
 </details>
 
 <details>
-<summary>macOS 提示「已损坏，无法打开」？</summary>
-
-浏览器给文件加了隔离标记。终端执行 `xattr -dr com.apple.quarantine /Applications/FCL.app` 后重新打开即可；仍未解决多半是 dmg 没下完（下载中的文件名会带 `.download`）。
-</details>
-
-<details>
 <summary>双击没反应 / 一开就退？</summary>
 
 绝大多数是环境里被设置了 `ELECTRON_RUN_AS_NODE=1`（会把 Electron 程序当普通 Node 跑）。1.3.7 起启动器会检测并自动重新拉起自己；旧版本请先删掉这个环境变量。
@@ -203,14 +192,13 @@ exe 未做代码签名，属于常见误报。可下载后自行校验 SHA256，
 <details>
 <summary>为什么只有一个 exe？卸载后残留什么？</summary>
 
-便携版不写注册表、不装服务，删除 exe 与它旁边的 `FCL\` 即彻底卸载（macOS 为 `/Applications/FCL.app` 与 `~/Library/Application Support/FCL-Portable/`）。
+便携版不写注册表、不装服务，删除 exe 与它旁边的 `FCL\` 即彻底卸载。
 </details>
 
 ## 已知限制
 
-- Windows 为便携单文件；macOS 另出 dmg（Apple Silicon / Intel 分架构）；未适配 Linux
-- 两个平台均未签名，首次运行需手动放行
-- macOS 版基于 Electron 43，要求 macOS 12 及以上
+- Windows 为便携单文件，未适配 Linux / macOS
+- 未做代码签名，首次运行 SmartScreen 会提示一次，手动放行即可
 - 皮肤模组依赖 CustomSkinLoader 对目标 MC 版本的兼容性，极新的快照可能尚未适配
 - 内置 CSL 构建截至发布时刻，遇到新版本可在 `assets/csl` 补充
 

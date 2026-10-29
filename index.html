@@ -42,7 +42,7 @@
     <div class="tb-left">
       <svg class="ic" style="width:16px;height:16px" aria-hidden="true"><use href="#i-fish"/></svg>
       <h1 class="tb-title">FCL</h1>
-      <span class="tb-sub">FishCraftLauncher v1.0.4</span>
+      <span class="tb-sub">FishCraftLauncher</span>
     </div>
     <div class="tb-right">
       <button class="tb-btn" type="button" data-act="min" aria-label="最小化" title="最小化"><i class="tb-ico min" aria-hidden="true"></i></button>
@@ -478,7 +478,7 @@
         <div class="panel">
           <div class="panel-head"><span class="panel-title">控制台</span>
             <span class="muted" id="srvHint">创建后这里会显示服务端输出</span>
-            <span class="srv-online" id="srvOnline">在线 0</span>
+            <span class="srv-online" id="srvOnlineCount">在线 0</span>
           </div>
           <pre class="srv-console" id="srvConsole" tabindex="0"></pre>
           <div class="srv-cmdbar">
@@ -570,7 +570,7 @@
                   <p class="tip">选「每次询问我」时，点 × 会弹出窗口让你当场决定；在弹窗里勾选「记住我的选择」会改掉这里的设置。</p>
                 </div>
                 <label class="check"><input type="checkbox" id="optCheckAssets" /> 启动前检查资源完整性</label>
-                <label class="check"><input type="checkbox" id="optIsolate" /> 版本隔离</label>
+                <label class="check" title="暂未实现：目前 mods / 配置所有版本共用，计划下个版本开放"><input type="checkbox" id="optIsolate" disabled /> 版本隔离<span class="muted">（即将支持）</span></label>
               </div>
               <p class="tip">明暗（浅色 / 深色 / 跟随系统）用右下角的圆形按钮切换。</p>
             </div>
@@ -599,7 +599,7 @@
             </div>
             <div class="about-main">
               <div class="about-title">FCL <span class="about-alias">FishCraftLauncher</span></div>
-              <p class="muted">v1.0.0 · Electron 桌面版 · PCL 风格界面</p>
+              <p class="muted"><span id="aboutVersion"></span> · Electron 桌面版 · PCL 风格界面</p>
               <p class="muted" id="aboutEnv"></p>
 
               <div class="credits">

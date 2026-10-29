@@ -5,7 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const UA = 'FMCL/1.0.0 (FishMineCraftLauncher)';
+const UA = 'FCL/' + require('../package.json').version + ' (FishCraftLauncher)';
 const API = 'https://api.modrinth.com/v2/project/customskinloader/version';
 
 // 目标：(版本号, 必须包含的 loader, 保存文件名)

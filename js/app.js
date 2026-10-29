@@ -142,7 +142,7 @@
     if (m) delete s.players[m[1]];
     // list 命令输出：There are 2 of a max of 20 players online: A, B
     m = /There are (\d+) of a max/.exec(line);
-    const el = $('#srvOnline');
+    const el = $('#srvOnlineCount');
     if (el) el.textContent = '在线 ' + (m ? Number(m[1]) : Object.keys(s.players).length);
   }
 
@@ -794,9 +794,13 @@ tun device error  err=rust tun error Failed to create adapter</pre>
     return VERSIONS.filter((v) => v.type === 'release').map((v) => v.id);
   }
 
-  /** 本机已装版本 + 最新正式版，用于加载器安装 / 资源筛选 */
+  /** 本机已装版本 + 最新正式版，用于加载器安装 / 资源筛选
+   *  已装版本里有 fabric-loader-…/forge-… 这类加载器目录，先还原成对应的 MC 版本；
+   *  快照（24w14a）和愚人节版本（23w13a_or_b）也要保留，否则按错误版本搜索资源。 */
   function latestMcList() {
-    const local = ((state.env && state.env.installedVersions) || []).filter((v) => /^\d+(\.\d+)+/.test(v));
+    const local = ((state.env && state.env.installedVersions) || [])
+      .map((v) => mcOf(v) || v)
+      .filter((v) => /^\d+(\.\d+)+/.test(v) || /^\d{2}w\d{2}[a-z]$/i.test(v) || isAprilFools(v));
     return local.concat(releaseVersions()).filter((v, i, a) => a.indexOf(v) === i).slice(0, 14);
   }
 
@@ -868,7 +872,7 @@ tun device error  err=rust tun error Failed to create adapter</pre>
         const april = isAprilFools(v.id) && verTab !== 'april';
         const badge = april
           ? '<span class="badge april">愚人节</span>'
-          : `<span class="badge ${v.type}">${TYPE_LABEL[v.type] || v.type}</span>`;
+          : `<span class="badge ${esc(v.type)}">${esc(TYPE_LABEL[v.type] || v.type)}</span>`;
         let act;
         if (task) act = `<button type="button" class="btn sm" disabled>${task.status === 'queued' ? '排队中' : taskProgress(task) + '%'}</button>`;
         else if (cur) act = '<button type="button" class="btn sm primary" disabled>当前版本</button>';
@@ -1014,6 +1018,7 @@ tun device error  err=rust tun error Failed to create adapter</pre>
     if (state.paths && state.paths.version) {
       const sub = document.querySelector('.tb-sub');
       if (sub) sub.textContent = 'FishCraftLauncher v' + state.paths.version;
+      if ($('#aboutVersion')) $('#aboutVersion').textContent = 'v' + state.paths.version;
     }
     return state.paths;
   }
@@ -1082,7 +1087,7 @@ tun device error  err=rust tun error Failed to create adapter</pre>
     const list = latestMcList();
     const mcSel = $('#modOnlineMc');
     const cur = /^\d+(\.\d+)+/.test(state.version) ? state.version : (list[0] || '');
-    mcSel.innerHTML = list.map((v) => `<option value="${v}" ${v === cur ? 'selected' : ''}>${v}</option>`).join('');
+    mcSel.innerHTML = list.map((v) => `<option value="${esc(v)}" ${v === cur ? 'selected' : ''}>${esc(v)}</option>`).join('');
     const loaderSel = $('#modOnlineLoader');
     const v = String(state.version || '');
     const guess = v.startsWith('fabric-') ? 'fabric' : v.startsWith('forge-') ? 'forge' : '';
@@ -1204,7 +1209,6 @@ tun device error  err=rust tun error Failed to create adapter</pre>
     } finally {
       btn.disabled = false;
       if (typeof off === 'function') off();
-      if (L.offProgress) L.offProgress();
     }
   }
 
@@ -1259,7 +1263,7 @@ tun device error  err=rust tun error Failed to create adapter</pre>
     const sel = $('#storeMc');
     const list = latestMcList();
     const cur = /^\d+(\.\d+)+/.test(state.version) ? state.version : (list[0] || '');
-    sel.innerHTML = list.map((v) => `<option value="${v}" ${v === cur ? 'selected' : ''}>${v}</option>`).join('');
+    sel.innerHTML = list.map((v) => `<option value="${esc(v)}" ${v === cur ? 'selected' : ''}>${esc(v)}</option>`).join('');
   }
 
   function renderStore() {
@@ -1317,9 +1321,12 @@ tun device error  err=rust tun error Failed to create adapter</pre>
     const { isShader, list, enabled } = packInfo();
     panel.classList.remove('hidden');
     const sc = isShader ? state.shaderScan : null;
-    const okN = sc ? (sc.packs || []).filter((x) => x.ok).length : 0;
+    const glKnown = !!(sc && sc.gl && sc.gl.version);
+    const okN = sc ? (sc.packs || []).filter((x) => x.ok === true).length : 0;
     $('#packTitle').textContent = sc
-      ? `已安装光影 · ${list.length} 个（${okN} 个可跑 · 显卡 OpenGL ${sc.gl.version}）`
+      ? (glKnown
+        ? `已安装光影 · ${list.length} 个（${okN} 个可跑 · 显卡 OpenGL ${sc.gl.version}）`
+        : `已安装光影 · ${list.length} 个（显卡 OpenGL 未知：先进一次游戏再回来看）`)
       : `已安装光影 · ${list.length} 个`;
     if ($('#irisBtn')) {
       $('#irisBtn').classList.toggle('hidden', !isShader);
@@ -1342,6 +1349,7 @@ tun device error  err=rust tun error Failed to create adapter</pre>
             if (!isShader || !sc) return '';
             const hit = (sc.packs || []).find((x) => x.file === p.name);
             if (!hit) return '';
+            if (hit.ok === null) return ' · <span class="gl-tag">需要 OpenGL ' + hit.need + '（当前未知）</span>';
             return hit.ok
               ? ' · <span class="gl-tag ok">✓ 可跑（GLSL ' + hit.glsl + '）</span>'
               : ' · <span class="gl-tag bad">需要 OpenGL ' + hit.need + '</span>';
@@ -1450,7 +1458,7 @@ tun device error  err=rust tun error Failed to create adapter</pre>
     const old = btn.textContent;
     btn.disabled = true;
     btn.textContent = '准备…';
-    L.onInstallProgress((p) => {
+    const off = L.onInstallProgress((p) => {
       btn.textContent = p.total ? Math.round((p.done / Math.max(p.total, 1)) * 100) + '%' : p.phase;
     });
     try {
@@ -1480,7 +1488,7 @@ tun device error  err=rust tun error Failed to create adapter</pre>
       appendLog('error', e.message || String(e));
     } finally {
       btn.disabled = false;
-      L.offProgress();
+      if (typeof off === 'function') off();
     }
   }
 
@@ -1749,7 +1757,6 @@ tun device error  err=rust tun error Failed to create adapter</pre>
       btn.disabled = false;
       btn.textContent = old;
       if (typeof off === 'function') off();
-      if (L.offProgress) L.offProgress();
     }
   }
 
@@ -1886,7 +1893,7 @@ tun device error  err=rust tun error Failed to create adapter</pre>
     renderSkinLib();
     // 已经启用过 CSL 的话，立刻把新皮肤同步进去，下次进游戏就是新皮肤
     try {
-      const cur = state.settings.version || '';
+      const cur = state.version || '';
       const r = await L.skinsApply({
         gameDir: gameDir(),
         playerName: a.name,
@@ -1920,7 +1927,7 @@ tun device error  err=rust tun error Failed to create adapter</pre>
   function renderAccounts() {
     $('#accList').innerHTML = state.accounts.length ? state.accounts.map((a) => `
       <div class="acc-item ${a.id === state.currentAccount ? 'current' : ''}">
-        <img class="avatar" src="${a.avatar || makeAvatar(a.name, 'random', 8)}" alt="">
+        <img class="avatar" src="${esc(a.avatar || makeAvatar(a.name, 'random', 8))}" alt="">
         <div class="acc-meta">
           <b>${esc(a.name)}</b>
           <span>${a.type === 'microsoft' ? '微软账号' : '离线账号'} · ${esc((a.uuid || '').slice(0, 18))}</span>
@@ -1971,6 +1978,7 @@ tun device error  err=rust tun error Failed to create adapter</pre>
     if (state.paths && state.paths.version) {
       const sub = document.querySelector('.tb-sub');
       if (sub) sub.textContent = 'FishCraftLauncher v' + state.paths.version;
+      if ($('#aboutVersion')) $('#aboutVersion').textContent = 'v' + state.paths.version;
     }
     $('#winW').value = s.winW; $('#winH').value = s.winH;
     $('#jvmArgs').value = s.jvm;
@@ -1986,6 +1994,7 @@ tun device error  err=rust tun error Failed to create adapter</pre>
     renderThemeFab();
     renderJavaState();
     renderUpdateState();
+    renderCloseBehavior();
   }
 
   /* ---------------- 外观切换：右下角悬浮按钮 ---------------- */
@@ -2234,7 +2243,6 @@ tun device error  err=rust tun error Failed to create adapter</pre>
         return r;
       } finally {
         if (typeof off === 'function') off();
-        if (L.offJavaProgress) L.offJavaProgress();
       }
     } catch (e) {
       appendLog('error', 'Java 部署失败：' + (e.message || e));
@@ -2355,7 +2363,6 @@ tun device error  err=rust tun error Failed to create adapter</pre>
           }
         } finally {
           if (typeof offV === 'function') offV();
-          if (L.offVerifyProgress) L.offVerifyProgress();
         }
         await refreshEnv();
       }
@@ -2874,6 +2881,16 @@ tun device error  err=rust tun error Failed to create adapter</pre>
   if ($('#bgFile')) $('#bgFile').addEventListener('change', onBgFileChosen);
 
   /* 拖拽兜底：不用任何文件对话框——把 PNG 拖到皮肤卡片 / 设置页 */
+  /* 拖拽兜底：只有「皮肤」「设置」两个面板接文件，其它区域一律拦掉默认行为。
+     不拦的话 Chromium 会把窗口导航到被拖进来的文件，而 file:// 页面会重新注入 preload，
+     等于把一个本地 HTML 变成了能调 launcher API 的页面。 */
+  ['dragover', 'drop'].forEach((type) => {
+    document.addEventListener(type, (e) => {
+      const types = (e.dataTransfer && e.dataTransfer.types) || [];
+      if (Array.from(types).indexOf('Files') >= 0) e.preventDefault();
+    }, true);
+  });
+
   function dropTargets(el, onFile) {
     if (!el) return;
     const stop = (e) => { e.preventDefault(); e.stopPropagation(); };
@@ -2965,6 +2982,18 @@ tun device error  err=rust tun error Failed to create adapter</pre>
       }
     });
     L.onLog((l) => appendLog(l.lv, l.msg));
+    // 开服面板：服务端 stdout / 状态 / 进度只在下面三个通道上，不订阅就看不到任何真实输出
+    if (L.onServerLog) L.onServerLog((line) => srvLog(line));
+    if (L.onServerState) L.onServerState((st) => {
+      if (!st) return;
+      state.srv.running = !!st.running;
+      if (st.running === false && st.code != null) srvLog(`[FCL] 服务端已退出（退出码 ${st.code}）`);
+      renderSrvState();
+    });
+    if (L.onServerProgress) L.onServerProgress((p) => {
+      if (!p) return;
+      if (p.phase) srvLog(`[FCL] ${p.phase}${p.total ? ' ' + Math.min(99, Math.round(((p.done || 0) / p.total) * 100)) + '%' : ''}`);
+    });
     if (L.onCrash) L.onCrash((info) => showCrashDialog(info));
     if (L.onStall) L.onStall(() => {
       if (!running) return;
