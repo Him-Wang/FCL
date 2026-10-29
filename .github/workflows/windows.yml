@@ -2,7 +2,17 @@ name: windows
 
 on:
   push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'shots/**'
   pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
