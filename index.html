@@ -19,6 +19,8 @@
   <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></symbol>
   <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 13.4A8.5 8.5 0 1110.6 3a6.8 6.8 0 1010.4 10.4z"/></symbol>
   <symbol id="i-auto" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 000-17z" fill="currentColor" stroke="none"/></symbol>
+<!-- 磨砂玻璃：一颗大星 + 一颗小星，表示「质感 / 特效」 -->
+<symbol id="i-frost" viewBox="0 0 24 24"><path d="M10.6 3.4l1.7 4.5 4.5 1.7-4.5 1.7-1.7 4.5-1.7-4.5L4.4 9.6l4.5-1.7z"/><path d="M17.4 14.4l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9z" opacity=".55"/></symbol>
   <symbol id="i-info" viewBox="0 0 24 24"><path d="M12 21a9 9 0 100-18 9 9 0 000 18zM12 11v5m0-8h.01"/></symbol>
   <symbol id="i-search" viewBox="0 0 24 24"><path d="M11 18a7 7 0 100-14 7 7 0 000 14zm5-2l5 5"/></symbol>
   <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3m-8 0l1 13h8l1-13"/></symbol>
@@ -32,6 +34,7 @@
   <symbol id="i-fish" viewBox="0 0 64 64"><image width="64" height="64" href="data:image/png;base64,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"/></symbol>
 </svg>
 
+<div class="bg-frost" id="bgFrost" aria-hidden="true"></div>
 <div class="bg-blur" id="bgBlur"></div>
 <div class="bg-photo" id="bgPhoto"></div>
 <div class="bg-tint" id="bgTint"></div>
@@ -213,6 +216,7 @@
             <button type="button" class="btn primary" data-act="import-mod"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>导入模组</button>
             <button type="button" class="btn ghost" data-act="browse-mods"><svg class="ic" aria-hidden="true"><use href="#i-folder"/></svg>打开模组文件夹</button>
             <button type="button" class="btn ghost" data-act="refresh-mods"><svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg>刷新</button>
+            <button type="button" class="btn primary" data-act="diag-run" id="diagBtn"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>环境自检</button>
             <button type="button" class="btn" data-act="deps-check" id="depsCheckBtn"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>依赖检查</button>
           </div>
           <div class="search">
@@ -224,6 +228,16 @@
           <div class="list" id="modList"></div>
         </div>
         <div class="hint" id="modStat"></div>
+
+        <div class="panel hidden" id="diagBox">
+          <div class="panel-head"><span class="panel-title">环境自检</span>
+            <span class="muted" id="diagState"></span>
+          </div>
+          <div id="diagBody" class="deps-body"></div>
+          <div class="panel-foot">
+            <button type="button" class="btn ghost" data-act="diag-close">关闭</button>
+          </div>
+        </div>
 
         <div class="panel hidden" id="depsBox">
           <div class="panel-head"><span class="panel-title">依赖检查</span>
@@ -549,19 +563,28 @@
               <div class="row wrap">
                 <label class="check"><input type="checkbox" id="optFullscreen" /> 启动后全屏</label>
                 <label class="check"><input type="checkbox" id="optCloseLauncher" /> 游戏启动后关闭启动器</label>
-                <div class="field wide">
-                  <label>关闭窗口时</label>
-                  <div class="skin-seg" id="closeBehaviorSeg" role="group" aria-label="关闭窗口时的行为">
-                    <button type="button" class="skin-seg-btn" data-act="close-behavior" data-id="ask">每次询问我</button>
-                    <button type="button" class="skin-seg-btn" data-act="close-behavior" data-id="minimize">最小化到托盘</button>
-                    <button type="button" class="skin-seg-btn" data-act="close-behavior" data-id="quit">直接退出</button>
-                  </div>
-                  <p class="tip">选「每次询问我」时，点 × 会弹出窗口让你当场决定；在弹窗里勾选「记住我的选择」会改掉这里的设置。</p>
-                </div>
                 <label class="check"><input type="checkbox" id="optCheckAssets" /> 启动前检查资源完整性</label>
                 <label class="check"><input type="checkbox" id="optIsolate" /> 版本隔离</label>
               </div>
-              <p class="tip">明暗（浅色 / 深色 / 跟随系统）用右下角的圆形按钮切换。</p>
+            </div>
+            <div class="field wide">
+              <label>关闭窗口时</label>
+              <div class="skin-seg" id="closeBehaviorSeg" role="group" aria-label="关闭窗口时的行为">
+                <button type="button" class="skin-seg-btn" data-act="close-behavior" data-id="ask">每次询问我</button>
+                <button type="button" class="skin-seg-btn" data-act="close-behavior" data-id="minimize">最小化到托盘</button>
+                <button type="button" class="skin-seg-btn" data-act="close-behavior" data-id="quit">直接退出</button>
+              </div>
+              <p class="tip">选「每次询问我」时，点 × 会弹出窗口让你当场决定；在弹窗里勾选「记住我的选择」会改掉这里的设置。</p>
+            </div>
+            <div class="field wide">
+              <label>外观</label>
+              <div class="skin-seg" id="modeSeg" role="group" aria-label="外观主题">
+                <button type="button" class="skin-seg-btn" data-act="mode" data-id="light">浅色</button>
+                <button type="button" class="skin-seg-btn" data-act="mode" data-id="frost">磨砂玻璃</button>
+                <button type="button" class="skin-seg-btn" data-act="mode" data-id="dark">深色</button>
+                <button type="button" class="skin-seg-btn" data-act="mode" data-id="system">跟随系统</button>
+              </div>
+              <p class="tip">磨砂玻璃：卡片、侧栏与标题栏半透明并对身后内容做模糊，背后铺一层内置极光渐变（亮度随下面的「背景不透明度」变化）。右下角圆形按钮按同样顺序循环切换。</p>
             </div>
             <div class="field wide">
               <label>背景图片 <span class="muted">（选自己的壁纸；留空就是纯色背景）</span></label>
@@ -588,7 +611,7 @@
             </div>
             <div class="about-main">
               <div class="about-title">FCL <span class="about-alias">FishCraftLauncher</span></div>
-              <p class="muted">v1.0.0 · Electron 桌面版 · PCL 风格界面</p>
+              <p class="muted" id="aboutVersion">Electron 桌面版 · PCL 风格界面</p>
               <p class="muted" id="aboutEnv"></p>
 
               <div class="credits">

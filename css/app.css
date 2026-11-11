@@ -84,6 +84,18 @@ code { font-family: var(--font-mono); font-size: .95em; }
   background-position: center; background-size: contain; background-repeat: no-repeat;
 }
 .bg-tint { position: fixed; inset: 0; z-index: 0; pointer-events: none; background: var(--bg); }
+/* 磨砂玻璃主题的内置壁纸：四角极光 + 近乎白的底，模糊由卡片自己的 backdrop-filter 完成 */
+.bg-frost {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  display: none;
+  background:
+    radial-gradient(52% 58% at 2% -6%, rgba(120, 170, 255, .95), rgba(120, 170, 255, 0) 62%),
+    radial-gradient(46% 52% at 102% 2%, rgba(186, 148, 255, .92), rgba(186, 148, 255, 0) 60%),
+    radial-gradient(54% 60% at 96% 104%, rgba(120, 214, 240, .95), rgba(120, 214, 240, 0) 64%),
+    radial-gradient(50% 56% at -4% 100%, rgba(255, 196, 158, .92), rgba(255, 196, 158, 0) 62%),
+    radial-gradient(40% 40% at 52% 46%, rgba(255, 255, 255, .9), rgba(255, 255, 255, 0) 70%),
+    linear-gradient(155deg, #f2f7ff 0%, #e8f0fc 46%, #f8f2ff 100%);
+}
 .app { position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column; }
 
 /* ---------------- 标题栏 ---------------- */
@@ -1020,6 +1032,32 @@ button.chip.jump:hover b { color: var(--accent-text); }
 .theme-fab:hover { color: var(--accent-text); border-color: var(--accent-line); background: var(--accent-soft); }
 .theme-fab:active { transform: scale(.95); }
 
+/* ---------------- 磨砂玻璃外观 ----------------
+   半透明表面由 tokens.css 的 body.frost 提供，这里只补「玻璃感」：
+   标题栏与侧栏更透、卡片顶部一道高光、分割线换成冷灰细线。 */
+body.frost .titlebar {
+  background: color-mix(in srgb, #ffffff 46%, transparent);
+  border-bottom-color: color-mix(in srgb, #6c7f96 16%, transparent);
+  -webkit-backdrop-filter: var(--frost-card);
+  backdrop-filter: var(--frost-card);
+}
+body.frost .sidebar {
+  background: color-mix(in srgb, #ffffff 34%, transparent);
+  border-right-color: color-mix(in srgb, #6c7f96 16%, transparent);
+  -webkit-backdrop-filter: var(--frost-card);
+  backdrop-filter: var(--frost-card);
+}
+body.frost .panel { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .75), var(--e1); }
+body.frost .panel-head { border-bottom-color: color-mix(in srgb, #6c7f96 14%, transparent); }
+body.frost .theme-fab { background: color-mix(in srgb, #ffffff 62%, transparent); }
+/* 终端风格的日志区：深色玻璃，比纯黑轻，仍然保证等宽文字的对比度 */
+body.frost .log {
+  background: color-mix(in srgb, #10141b 84%, transparent);
+  -webkit-backdrop-filter: var(--frost-log);
+  backdrop-filter: var(--frost-log);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08);
+}
+
 /* ---------------- 响应式 ---------------- */
 @media (max-width: 1000px) {
   .two-col, .form.grid { grid-template-columns: minmax(0, 1fr); }
@@ -1072,7 +1110,7 @@ body {
   border-radius: var(--r-window);
   overflow: hidden;
 }
-.bg-blur, .bg-photo, .bg-tint {
+.bg-blur, .bg-photo, .bg-tint, .bg-frost {
   border-radius: var(--r-window);
 }
 
@@ -1185,3 +1223,32 @@ body {
   font-size: var(--fs-12);
 }
 .deps-item b { font-family: var(--mono, ui-monospace, Consolas, monospace); }
+
+/* ---------------- 环境自检 ---------------- */
+.diag-icon {
+  flex: none;
+  width: 18px; height: 18px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  font-size: 12px; font-weight: 700;
+  background: var(--accent-soft); color: var(--accent-text);
+}
+.deps-item.diag-ok .diag-icon { background: var(--ok-soft, #dcf5e6); color: var(--ok-text, #127a44); }
+.deps-item.diag-warn { background: var(--warn-soft, #fff4e5); }
+.deps-item.diag-warn .diag-icon { background: #ffe2b8; color: #8a4b00; }
+.deps-item.diag-error { background: #fdecec; }
+.deps-item.diag-error .diag-icon { background: #f8d7d7; color: #b3261e; }
+.diag-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.diag-text .muted { font-size: var(--fs-11); }
+
+/* ---------------- 光影兼容性标签 ---------------- */
+.gl-tag {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: var(--r-pill);
+  font-size: 10.5px;
+  line-height: 16px;
+  font-weight: 600;
+}
+.gl-tag.ok { background: var(--ok-soft, #dcf5e6); color: var(--ok-text, #127a44); }
+.gl-tag.bad { background: #fdecec; color: #b3261e; }

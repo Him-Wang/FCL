@@ -51,7 +51,7 @@
 ### 界面
 
 - **磨砂玻璃 + 整窗圆角**：卡片、侧栏、壁纸统一 `backdrop-filter`，窗口四角真正透出桌面；背景不透明度 30%–100% 实时生效
-- **外观只有一个入口**：右下角圆形按钮循环「浅色 → 深色 → 跟随系统」，没有主题色板
+- **四套外观**：浅色 / **磨砂玻璃** / 深色 / 跟随系统。磨砂玻璃是独立的一套浅色基底 —— 半透明卡片 + 28px 模糊 + 内置极光渐变（也支持你自己的壁纸），玻璃的透明度跟着「背景不透明度」走；设置页有分段控件，右下角圆形按钮按同样顺序循环
 - 设计系统拆成两层：`css/tokens.css` 只声明变量，`css/app.css` 只引用变量（见 `design.md`）
 - **托盘常驻**，点 × 的行为三选一：**每次询问 / 最小化到托盘 / 直接退出**
 
@@ -149,6 +149,15 @@ lib/cnmod.js         MC百科中文搜索（含缓存与单飞）
 lib/localskin.js     CustomSkinLoader 集成（自带构建、配置修补、皮肤写入）
 lib/net.js           网络与下载工具
 lib/microsoft.js     微软登录（内嵌窗口 + 浏览器回调兜底）
+lib/server.js        一键开服（Paper / 原版、端口防冲突、命令、日志）
+lib/p2p.js           P2P 联机（内置 EasyTier 房主/加入模式）
+lib/upnp.js          UPnP 端口映射（SSDP + SOAP）
+lib/deps.js          模组依赖解析（fabric.mod.json / mods.toml，含内嵌 jar）
+lib/diag.js          运行环境自检（版本 / 加载器 / 光影 / Java / 依赖）
+lib/shaders.js       光影兼容性预检（GLSL #version → 需要的 OpenGL）
+lib/crash.js         崩溃诊断与诊断包导出
+lib/update.js        自动更新检查与下载
+lib/ipc/features.js  附加功能 IPC 注册（开服/联机/更新/崩溃/P2P/自检）
 assets/skins/        6 套内置皮肤（64×64 PNG）
 assets/csl/          内置的 CustomSkinLoader 构建 + manifest
 tools/               图标生成、皮肤生成、CSL 拉取、打包脚本

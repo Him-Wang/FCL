@@ -1,0 +1,8 @@
+renderDistance:8
+simulationDistance:8
+graphicsPreset:"fast"
+entityShadows:false
+enableVsync:false
+maxFps:60
+ao:true
+particles:1

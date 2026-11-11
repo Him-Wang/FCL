@@ -165,3 +165,34 @@ body.dark {
   --e3: 0 26px 60px rgba(0, 0, 0, .55);
   --action-shadow: 0 6px 20px color-mix(in srgb, var(--accent) 34%, transparent);
 }
+
+/* ==========================================================================
+   磨砂玻璃外观（body.frost）：浅色基底上把表面做成半透明毛玻璃
+   --glass-a 由 js/app.js 按「背景不透明度」内联写到 body 上，
+   这里只声明「用什么颜色、按多少比例」；表面越透，身后的极光壁纸越明显。
+   ========================================================================== */
+body.frost {
+  color-scheme: light;
+
+  --glass-a: .72;
+  --bg: #e9f0fa;
+  --surface: color-mix(in srgb, #ffffff calc(var(--glass-a) * 100%), transparent);
+  /* 二级表面（输入框、分段控件轨道）用冷灰蓝，纯白放在毛玻璃卡片上会「消失」 */
+  --surface-2: color-mix(in srgb, #e9effa calc(var(--glass-a) * 78%), transparent);
+  --surface-3: color-mix(in srgb, #e4ecf8 calc(var(--glass-a) * 86%), transparent);
+  --hover: color-mix(in srgb, #dce7f7 70%, transparent);
+  --line: color-mix(in srgb, #6c7f96 24%, transparent);
+  --line-soft: color-mix(in srgb, #6c7f96 15%, transparent);
+  --line-strong: color-mix(in srgb, #6c7f96 38%, transparent);
+  --text: #131a24;
+  --text-muted: #45515f;
+  --text-faint: #5b6774;
+
+  /* 磨砂更重：卡片 28px、日志区 16px，饱和度略提，玻璃才有「厚度」 */
+  --frost-card: blur(28px) saturate(1.7);
+  --frost-log: blur(16px) saturate(1.25);
+
+  --e1: 0 1px 2px rgba(15, 23, 42, .05), 0 10px 26px rgba(15, 23, 42, .07);
+  --e2: 0 12px 34px rgba(15, 23, 42, .12);
+  --e3: 0 26px 64px rgba(15, 23, 42, .22);
+}

@@ -111,6 +111,10 @@
     $$('.page').forEach((s) => s.classList.toggle('active', s.id === 'page-' + p));
     $('.content').scrollTop = 0;
     if (p === 'accounts') renderSkin();
+    if (p === 'store') {
+      if (state.store.type === 'shader') scanShaders().then(() => renderPacks());
+      else renderPacks();
+    }
     if (p === 'server') { renderServerPage(); refreshLanInfo(); if ($('#p2pRoom') && !$('#p2pRoom').value) p2pGenRoom(); p2pRender(); }
   }
 
@@ -204,8 +208,6 @@
     </div>`);
     openModal('游戏崩溃了', rows.join(''));
   }
-
-  window.__fclShowCrash = (info) => showCrashDialog(info);
 
   async function crashExport() {
     if (!hasElectron || !L.crashExport) return;
@@ -339,6 +341,94 @@
     toast(r.message || (r.ok ? '映射成功' : '映射失败'), 6000);
   }
 
+  /* ---------------- 运行环境自检 ---------------- */
+  const DIAG_ICON = { ok: '✓', warn: '!', error: '×' };
+
+  function renderDiag(r) {
+    const box = $('#diagBox');
+    if (!box) return;
+    box.classList.remove('hidden');
+    const st = $('#diagState');
+    const body = $('#diagBody');
+    if (st) {
+      const s = (r && r.summary) || { errors: 0, warns: 0 };
+      st.textContent = `错误 ${s.errors} · 警告 ${s.warns} · 模组 ${r.modCount} · 光影 ${r.shaderCount}`;
+      st.style.color = s.errors ? 'var(--danger, #c0392b)' : s.warns ? 'var(--warn-text, #8a4b00)' : '';
+    }
+    if (!body) return;
+    body.innerHTML = (r.checks || [])
+      .map((c) => {
+        const icon = DIAG_ICON[c.level] || '·';
+        const action = c.action
+          ? `<button type="button" class="btn sm ghost" data-act="diag-fix" data-id="${esc(c.action.type)}" data-ver="${esc(c.action.mc || '')}">${esc(
+              c.action.type === 'install-iris' ? '装 Iris'
+              : c.action.type === 'install-fabric' ? '装 Fabric 并切换'
+              : c.action.type === 'fix-deps' ? '补装依赖'
+              : c.action.type === 'open-mods' ? '打开 mods'
+              : c.action.type === 'deploy-java' ? '部署 Java'
+              : '处理')}</button>`
+          : '';
+        return `<div class="deps-item diag-${c.level}"><span class="diag-icon">${icon}</span><span class="diag-text"><b>${esc(c.title)}</b>${c.detail ? '<span class="muted">' + esc(c.detail) + '</span>' : ''}</span>${action}</div>`;
+      })
+      .join('');
+    const foot = $('#diagBody');
+    if (foot && r.summary && (r.summary.errors || r.summary.warns)) {
+      foot.insertAdjacentHTML(
+        'beforeend',
+        '<div class="row wrap" style="margin-top:var(--sp-3)"><button type="button" class="btn primary" data-act="perf-optimize">一键降配（卡顿/未响应时用）</button>' +
+          '<span class="muted" style="font-size:11px">把视距调到 8、画质快速、关实体阴影、限 60 帧</span></div>'
+      );
+    }
+  }
+
+  async function perfOptimize() {
+    if (!hasElectron || !L.perfOptimize) return;
+    const r = await L.perfOptimize({ gameDir: (state.env && state.env.gameDir) || gameDir() });
+    if (r && r.ok) {
+      appendLog('info', '已写入低配画质：视距 8 / 快速画质 / 关阴影 / 60 帧');
+      toast('已调成低配画质，下次启动生效', 6000);
+    } else {
+      toast('降配失败：' + ((r && r.error) || '未知错误'), 6000);
+    }
+  }
+
+  async function diagRun() {
+    if (!hasElectron || !L.diagRun) { toast('桌面端才支持环境自检'); return; }
+    const btn = $('#diagBtn');
+    const old = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = '自检中…'; }
+    try {
+      const r = await L.diagRun({ gameDir: (state.env && state.env.gameDir) || gameDir(), version: state.version });
+      state.diag = r;
+      renderDiag(r);
+      if (r.summary.errors) toast(`自检发现 ${r.summary.errors} 个问题，按提示处理即可`, 7000);
+      else if (r.summary.warns) toast(`自检通过，有 ${r.summary.warns} 条提醒`, 5000);
+      else toast('环境一切正常', 3000);
+    } catch (e) {
+      toast('自检失败：' + ipcMsg(e), 5000);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = old; }
+    }
+  }
+
+  async function diagFix(kind, ver) {
+    if (kind === 'install-iris') { const b = $('#irisBtn') || document.createElement('button'); installIris(b); return; }
+    if (kind === 'install-fabric') {
+      try {
+        toast('正在安装 Fabric…', 5000);
+        const v = await ensureFabricForSkin(ver || mcOf(state.version));
+        state.version = v; save(); renderHero(); renderVersions();
+        toast('已切到 ' + v, 4000);
+        diagRun();
+      } catch (e) { toast('装 Fabric 失败：' + ipcMsg(e), 6000); }
+      return;
+    }
+    if (kind === 'fix-deps') { await depsFix(); diagRun(); return; }
+    if (kind === 'open-mods') { if (hasElectron && state.diag && state.diag.modsDir) L.open(state.diag.modsDir); return; }
+    if (kind === 'open-shaders') { toast('进游戏：选项 → 视频设置 → 光影包，选一个再点「应用」', 8000); return; }
+    if (kind === 'deploy-java') { deployJava(); return; }
+  }
+
   /* ---------------- 模组依赖自检 ---------------- */
   /** 自动补装缺失依赖（Fabric API 这类）；返回补装了什么 */
   async function autoFixDeps(reason) {
@@ -454,6 +544,21 @@
     return true;
   }
 
+  let p2pAdminShown = false;
+  function p2pShowAdminModal() {
+    if (p2pAdminShown) return;
+    p2pAdminShown = true;
+    openModal('P2P 需要管理员权限', `
+      <p class="tip">EasyTier 要创建一块虚拟网卡，Windows 下必须由管理员权限完成，刚才启动失败就是这里被拦住了。</p>
+      <pre class="crash-log" style="max-height:120px">Failed to add Easytier to firewall allowlist  error=拒绝访问 (0x80070005)
+tun device error  err=rust tun error Failed to create adapter</pre>
+      <div class="row wrap" style="margin-top:var(--sp-3)">
+        <button type="button" class="btn primary" data-act="p2p-admin">以管理员身份重启启动器</button>
+        <button type="button" class="btn ghost" data-act="modal-close">知道了</button>
+      </div>
+    `);
+  }
+
   function p2pRender() {
     const st = state.p2p || {};
     const ipEl = $('#p2pIp');
@@ -474,6 +579,7 @@
 
   async function p2pStart() {
     if (!hasElectron || !L.p2pStart) { toast('桌面端才支持 P2P'); return; }
+    p2pAdminShown = false;
     const room = ($('#p2pRoom').value || '').trim();
     if (!room) { toast('请先填房间号'); return; }
     const btn = $('#p2pStartBtn');
@@ -486,7 +592,7 @@
         secret: ($('#p2pSecret').value || '').trim(),
         peer: ($('#p2pPeer').value || '').trim(),
       });
-      state.p2p = { running: true, role: r.role, virtualIp: r.virtualIp, room: r.room };
+      state.p2p = { running: true, role: r.role, virtualIp: r.virtualIp, room: r.room, startedAt: Date.now() };
       srvLog('[P2P] 已启动：' + (r.role === 'host' ? '房主' : '加入') + '，虚拟 IP ' + (r.virtualIp || '待分配'));
       p2pRender();
       toast(r.role === 'host' ? '房主已就绪：把虚拟 IP 发给朋友' : '已加入房间', 5000);
@@ -651,6 +757,9 @@
       be.title = `Java ${e.java ? '已就绪' : '未检测到'}，系统内存 ${e.totalMemGB} GB`;
     } else be.textContent = '演示模式';
     $('#aboutEnv').textContent = e ? `${esc(e.gameDir)} · ${esc(e.cpu)}` : '浏览器中打开时无法读取本机信息，请运行 npm start。';
+    const av = $('#aboutVersion');
+    const appVer = (state.paths && state.paths.version) || (e && e.version) || '';
+    if (av && appVer) av.textContent = `v${appVer} · Electron 桌面版 · PCL 风格界面`;
   }
 
   function renderNews() {
@@ -810,9 +919,14 @@
     const photo = $('#bgPhoto');
     const blur = $('#bgBlur');
     const tint = $('#bgTint');
+    const frost = $('#bgFrost');
     if (!photo || !tint) return;
     const alpha = typeof s.opacity === 'number' ? s.opacity : 1;
     const url = s.bgImage ? `url("${toFileUrl(s.bgImage)}")` : 'none';
+    const isFrost = document.body.classList.contains('frost');
+
+    // 磨砂玻璃：没选自定义壁纸时铺内置极光渐变，选了就还是用用户的图（同样走毛玻璃）
+    if (frost) frost.style.display = isFrost && !s.bgImage ? 'block' : 'none';
 
     for (const el of [photo, blur]) {
       if (!el) continue;
@@ -820,9 +934,30 @@
       el.style.backgroundImage = url;
     }
 
-    const rgb = hexToRgb(getComputedStyle(document.body).getPropertyValue('--bg')) || [244, 246, 249];
     // 变量声明在 body 上，覆盖也必须写在 body 上（写在 <html> 上会被 body.dark 盖掉）
     const root = document.body;
+
+    if (isFrost) {
+      // 透明度交给 CSS 的 --glass-a（color-mix 现算），不再内联改写 --surface / --surface-2
+      root.style.removeProperty('--surface');
+      root.style.removeProperty('--surface-2');
+      baseColors.key = '';
+      // 30% → .46（很透，极光很明显）、100% → .78（玻璃仍然看得出层次，不会糊成纯白）
+      root.style.setProperty('--glass-a', (0.34 + 0.44 * alpha).toFixed(3));
+      tint.style.background = 'transparent';
+      if (s.bgImage) {
+        const imgAlpha = 0.3 + 0.7 * alpha;
+        if (photo) photo.style.opacity = String(imgAlpha.toFixed(3));
+        if (blur) blur.style.opacity = String((imgAlpha * 0.9).toFixed(3));
+      } else {
+        if (photo) photo.style.opacity = '1';
+        if (blur) blur.style.opacity = '1';
+      }
+      return;
+    }
+    root.style.removeProperty('--glass-a');
+
+    const rgb = hexToRgb(getComputedStyle(document.body).getPropertyValue('--bg')) || [244, 246, 249];
 
     if (s.bgImage) {
       const imgAlpha = 0.25 + 0.75 * alpha;
@@ -1189,6 +1324,16 @@
     return { isShader, list, enabled };
   }
 
+  async function scanShaders() {
+    if (!hasElectron || !L.shaderScan) return null;
+    try {
+      state.shaderScan = await L.shaderScan({ gameDir: (state.env && state.env.gameDir) || gameDir() });
+      return state.shaderScan;
+    } catch (e) {
+      return null;
+    }
+  }
+
   function renderPacks() {
     const panel = $('#packPanel');
     if (!panel) return;
@@ -1198,7 +1343,11 @@
     }
     const { isShader, list, enabled } = packInfo();
     panel.classList.remove('hidden');
-    $('#packTitle').textContent = `${isShader ? '已安装光影' : '已安装材质包'} · ${list.length} 个`;
+    const sc = isShader ? state.shaderScan : null;
+    const okN = sc ? (sc.packs || []).filter((x) => x.ok).length : 0;
+    $('#packTitle').textContent = sc
+      ? `已安装光影 · ${list.length} 个（${okN} 个可跑 · 显卡 OpenGL ${sc.gl.version}）`
+      : `已安装光影 · ${list.length} 个`;
     if ($('#irisBtn')) {
       $('#irisBtn').classList.toggle('hidden', !isShader);
       $('#irisBtn').textContent = /^fabric/i.test(String(state.version))
@@ -1216,7 +1365,14 @@
       return `<div class="row-item">
         <div class="row-main">
           <div class="row-title">${esc(p.name.replace(/\.(zip|jar)$/i, ''))} ${on ? '<span class="badge on">已启用</span>' : ''}</div>
-          <div class="row-sub">${p.size} KB · ${isShader ? 'shaderpacks' : 'resourcepacks'}</div>
+          <div class="row-sub">${p.size} KB · ${isShader ? 'shaderpacks' : 'resourcepacks'}${(function () {
+            if (!isShader || !sc) return '';
+            const hit = (sc.packs || []).find((x) => x.file === p.name);
+            if (!hit) return '';
+            return hit.ok
+              ? ' · <span class="gl-tag ok">✓ 可跑（GLSL ' + hit.glsl + '）</span>'
+              : ' · <span class="gl-tag bad">需要 OpenGL ' + hit.need + '</span>';
+          })()}</div>
         </div>
         <div class="row-actions">
           ${isShader ? '' : `<button type="button" class="switch ${on ? 'on' : ''}" role="switch" aria-checked="${on ? 'true' : 'false'}" aria-label="${on ? '停用' : '启用'} ${esc(p.name)}" data-act="pack-toggle" data-id="${esc(p.name)}"></button>`}
@@ -1828,6 +1984,16 @@
     el.style.setProperty('--fill', Math.max(0, Math.min(100, pct)).toFixed(2) + '%');
   }
 
+  /** 设置页「外观」分段控件与悬浮按钮保持同步 */
+  function renderModeSeg() {
+    const cur = MODE_ORDER.includes(state.settings.mode) ? state.settings.mode : 'light';
+    $$('[data-act="mode"]').forEach((b) => {
+      const on = b.dataset.id === cur;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
   function renderSettings() {
     const s = state.settings;
     if (document.activeElement !== $('#memRange')) $('#memRange').value = s.mem;
@@ -1855,14 +2021,17 @@
     paintRange($('#memRange'));
     paintRange($('#opacityRange'));
     renderThemeFab();
+    renderModeSeg();
     renderJavaState();
     renderUpdateState();
   }
 
-  /* ---------------- 外观切换：右下角悬浮按钮 ---------------- */
-  const MODE_ORDER = ['light', 'dark', 'system'];
+  /* ---------------- 外观切换：右下角悬浮按钮 + 设置页分段控件 ---------------- */
+  // 磨砂玻璃是独立的一套外观（半透明表面 + 内置极光壁纸），不跟随明暗，所以直接排在浅色之后
+  const MODE_ORDER = ['light', 'frost', 'dark', 'system'];
   const MODE_META = {
     light: { icon: '#i-sun', label: '浅色' },
+    frost: { icon: '#i-frost', label: '磨砂玻璃' },
     dark: { icon: '#i-moon', label: '深色' },
     system: { icon: '#i-auto', label: '跟随系统' }
   };
@@ -1882,14 +2051,19 @@
 
   function cycleMode() {
     const cur = MODE_ORDER.includes(state.settings.mode) ? state.settings.mode : 'light';
-    const next = MODE_ORDER[(MODE_ORDER.indexOf(cur) + 1) % MODE_ORDER.length];
-    state.settings.mode = next;
+    setMode(MODE_ORDER[(MODE_ORDER.indexOf(cur) + 1) % MODE_ORDER.length]);
+  }
+
+  /** 外观唯一入口：段控与悬浮按钮都走这里 */
+  function setMode(mode) {
+    if (!MODE_ORDER.includes(mode)) return;
+    state.settings.mode = mode;
     state.settings.modeTouched = true;
     save();
     applyTheme();
     renderSettings();
-    const label = MODE_META[next].label;
-    toast('外观：' + label + (next === 'system' ? `（系统为${sysDark() ? '深色' : '浅色'}）` : ''));
+    const label = MODE_META[mode].label;
+    toast('外观：' + label + (mode === 'system' ? `（系统为${sysDark() ? '深色' : '浅色'}）` : ''));
   }
 
   const sysMedia = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
@@ -1915,9 +2089,24 @@
     return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
   }
   function mixHex(a, b, t) {
-    const pa = String(a).replace('#', '').match(/../g).map((h) => parseInt(h, 16));
-    const pb = String(b).replace('#', '').match(/../g).map((h) => parseInt(h, 16));
-    return '#' + pa.map((v, i) => Math.round(v * t + pb[i] * (1 - t)).toString(16).padStart(2, '0')).join('');
+    const pa = String(a).replace('#', '').match(/../g) || [];
+    const pb = String(b).replace('#', '').match(/../g) || [];
+    if (pa.length < 3 || pb.length < 3) return String(a).startsWith('#') ? a : '#2b7bf0';
+    return '#' + pa.map((v, i) => Math.round(parseInt(v, 16) * t + parseInt(pb[i], 16) * (1 - t)).toString(16).padStart(2, '0')).join('');
+  }
+  /** --surface 在磨砂玻璃主题里是 color-mix()，取不到具体值就借一个探针元素量出合成后的 RGB */
+  function resolvedSurface() {
+    const probe = document.createElement('span');
+    probe.style.cssText = 'position:absolute;left:-9999px;top:0;width:1px;height:1px;background:var(--surface)';
+    document.body.appendChild(probe);
+    const rgb = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    const m = String(rgb).match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)/);
+    if (m) return '#' + [m[1], m[2], m[3]].map((v) => Math.round(Number(v)).toString(16).padStart(2, '0')).join('');
+    // Chromium 对 color-mix 可能返回 color(srgb r g b / a) 形式
+    const c = String(rgb).match(/color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/);
+    if (c) return '#' + [c[1], c[2], c[3]].map((v) => Math.round(Number(v) * 255).toString(16).padStart(2, '0')).join('');
+    return '#ffffff';
   }
   /** 在 accent 基础上向 toward 方向逐步混合，直到与 against 的对比度达标 */
   function pushContrast(color, against, toward, min) {
@@ -1933,7 +2122,7 @@
   function applyAccent(color, dark) {
     // 变量声明在 body 上，覆盖也必须写在 body 上：写在 <html> 上会被 body.dark 的声明盖掉
     const host = document.body;
-    const surface = (getComputedStyle(host).getPropertyValue('--surface') || '#ffffff').trim();
+    const surface = resolvedSurface();
     const on = dark ? ON_DARK : ON_LIGHT;
     const away = dark ? '#ffffff' : '#000000';
     // 填充色：承载 on 色文字的实心块（主按钮、选中的分段控件）
@@ -1959,12 +2148,15 @@
     if (!s.mode) s.mode = s.dark ? 'dark' : 'light';
     // 没主动选过外观时，默认浅色（老版本存的是「跟随系统」，这里统一拉回浅色一次）
     if (!s.modeTouched && s.mode === 'system') s.mode = 'light';
+    const frost = s.mode === 'frost';
     const dark = s.mode === 'system' ? sysDark() : s.mode === 'dark';
     s.dark = dark;
     document.body.classList.toggle('dark', dark);
+    // 磨砂玻璃是浅色基底的一套外观：半透明表面 + 内置极光壁纸，靠 body.frost 开
+    document.body.classList.toggle('frost', frost);
     // 强调色按当前表面推导
     applyAccent(ACCENT, dark);
-    // 明暗变了，背景蒙版要跟着换色
+    // 明暗/风格变了，背景蒙版与卡片透明度要跟着重算
     if (typeof applyBackdrop === 'function') applyBackdrop();
   }
 
@@ -2219,7 +2411,11 @@
           setProgress(10 + pct * 0.5);
         }) : null;
         try {
-          await L.verify({ version: state.version, gameDir: gameDir(), assets: true });
+          const vr = await L.verify({ version: state.version, gameDir: gameDir(), assets: true });
+          if (vr && vr.ok === false) {
+            appendLog('warn', '文件校验没成功（可能缺文件，先继续启动）：' + String(vr.error || '').split('\n')[0]);
+            toast('校验没成功，先继续启动试试', 5000);
+          }
         } finally {
           if (typeof offV === 'function') offV();
           if (L.offVerifyProgress) L.offVerifyProgress();
@@ -2558,7 +2754,10 @@
       case 'queue-drop': if (hasElectron) L.queueRemove(+id).then(refreshQueue); break;
       case 'queue-clear': if (hasElectron) L.queueClear().then(refreshQueue); break;
 
-      case 'store-tab': state.store.type = id; state.store.items = []; renderStore(); doStoreSearch(); break;
+      case 'store-tab': state.store.type = id; state.store.items = []; renderStore(); doStoreSearch();
+        if (id === 'shader') { scanShaders().then(() => renderPacks()); }
+        else renderPacks();
+        break;
       case 'store-search': doStoreSearch(); break;
       case 'store-install': storeInstall(id, el); break;
       case 'pack-toggle': togglePack(id); break;
@@ -2566,6 +2765,11 @@
       case 'import-mod': importContent('mod'); break;
       case 'import-pack': importContent(state.store.type === 'shader' ? 'shader' : 'resourcepack'); break;
       case 'srv-kind': state.srv.kind = id === 'vanilla' ? 'vanilla' : 'paper'; renderSrvState(); break;
+      case 'diag-run': diagRun(); break;
+      case 'perf-optimize': perfOptimize(); break;
+      case 'open-shaders': if (hasElectron) toast('进游戏：选项 → 视频设置 → 光影包，选一个再点「应用」', 8000); break;
+      case 'diag-fix': diagFix(id, el.dataset.ver); break;
+      case 'diag-close': { const b = $('#diagBox'); if (b) b.classList.add('hidden'); break; }
       case 'deps-check': depsCheck(); break;
       case 'deps-fix': depsFix(); break;
       case 'deps-close': { const b = $('#depsBox'); if (b) b.classList.add('hidden'); break; }
@@ -2596,6 +2800,7 @@
       case 'srv-stop': srvStop(); break;
       case 'srv-open': if (hasElectron && L.open) L.open(state.srv.dir); break;
       case 'close-behavior': setCloseBehavior(id); break;
+      case 'mode': setMode(id); break;
       case 'pick-skin': pickSkin(); break;
       case 'reset-skin': resetSkin(); break;
       case 'skin-variant': setSkinVariant(id); break;
@@ -2808,7 +3013,7 @@
   if (hasElectron) {
     if (L.onP2pLog) L.onP2pLog((line) => {
       srvLog(line);
-      if (p2pNeedAdmin(line)) state.p2p = Object.assign({ running: false }, state.p2p);
+      if (p2pNeedAdmin(line)) { state.p2p = Object.assign({ running: false }, state.p2p); p2pShowAdminModal(); }
       if (/ipv4/i.test(line)) {
         const m = /(\d+\.\d+\.\d+\.\d+)/.exec(line);
         if (m) { state.p2p = Object.assign({ running: true }, state.p2p, { virtualIp: m[1] }); p2pRender(); }
@@ -2817,10 +3022,19 @@
     if (L.onP2pState) L.onP2pState((st) => {
       state.p2p = Object.assign({}, state.p2p, st);
       p2pRender();
-      if (st && st.running === false) srvLog('[P2P] 进程已退出');
+      if (st && st.running === false) {
+        srvLog('[P2P] 进程已退出' + (st.code != null ? '（退出码 ' + st.code + '）' : ''));
+        // 刚启动就退出，基本就是权限问题
+        if (state.p2p && state.p2p.startedAt && Date.now() - state.p2p.startedAt < 60000) p2pShowAdminModal();
+      }
     });
     L.onLog((l) => appendLog(l.lv, l.msg));
     if (L.onCrash) L.onCrash((info) => showCrashDialog(info));
+    if (L.onStall) L.onStall(() => {
+      if (!running) return;
+      appendLog('warn', '游戏已经 45 秒没有输出，可能卡住了（窗口被最小化 / 首次加载字体都会这样）');
+      toast('游戏好像卡住了：先等一下，或点启动按钮结束进程', 8000);
+    });
     L.onGameExit((e) => {
       if (!running) return;
       stopGameState();
