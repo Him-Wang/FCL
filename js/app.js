@@ -2044,8 +2044,8 @@ tun device error  err=rust tun error Failed to create adapter</pre>
     const use = $('#themeFabIcon');
     if (use) use.setAttribute('href', meta.icon);
     const label = mode === 'system' ? `跟随系统（当前${sysDark() ? '深色' : '浅色'}）` : meta.label;
-    fab.setAttribute('aria-label', `切换明暗外观，当前为${label}`);
-    fab.setAttribute('title', `切换明暗外观 · ${label}`);
+    fab.setAttribute('aria-label', `切换外观，当前为${label}`);
+    fab.setAttribute('title', `切换外观 · ${label}`);
     fab.dataset.mode = mode;
   }
 

@@ -55,10 +55,11 @@
 - 设计系统拆成两层：`css/tokens.css` 只声明变量，`css/app.css` 只引用变量（见 `design.md`）
 - **托盘常驻**，点 × 的行为三选一：**每次询问 / 最小化到托盘 / 直接退出**
 
-> 截图使用浅色主题。
+> 截图使用浅色主题，另附两张磨砂玻璃外观。
 
 | | |
 | --- | --- |
+| ![磨砂玻璃外观 · 启动页](docs/screenshots/theme-frost-launch.jpg) | ![外观开关 · 设置页](docs/screenshots/theme-frost-settings.jpg) |
 | ![版本管理](docs/screenshots/versions.jpg) | ![模组管理](docs/screenshots/mods.jpg) |
 | ![材质包与光影](docs/screenshots/packs.jpg) | ![皮肤](docs/screenshots/skin.jpg) |
 
