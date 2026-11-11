@@ -45,7 +45,7 @@
     <div class="tb-left">
       <svg class="ic" style="width:16px;height:16px" aria-hidden="true"><use href="#i-fish"/></svg>
       <h1 class="tb-title">FCL</h1>
-      <span class="tb-sub">FishCraftLauncher v1.0.4</span>
+      <span class="tb-sub">FishCraftLauncher</span>
     </div>
     <div class="tb-right">
       <button class="tb-btn" type="button" data-act="min" aria-label="最小化" title="最小化"><i class="tb-ico min" aria-hidden="true"></i></button>
@@ -481,7 +481,7 @@
         <div class="panel">
           <div class="panel-head"><span class="panel-title">控制台</span>
             <span class="muted" id="srvHint">创建后这里会显示服务端输出</span>
-            <span class="srv-online" id="srvOnline">在线 0</span>
+            <span class="srv-online" id="srvOnlineCount">在线 0</span>
           </div>
           <pre class="srv-console" id="srvConsole" tabindex="0"></pre>
           <div class="srv-cmdbar">
@@ -564,7 +564,7 @@
                 <label class="check"><input type="checkbox" id="optFullscreen" /> 启动后全屏</label>
                 <label class="check"><input type="checkbox" id="optCloseLauncher" /> 游戏启动后关闭启动器</label>
                 <label class="check"><input type="checkbox" id="optCheckAssets" /> 启动前检查资源完整性</label>
-                <label class="check"><input type="checkbox" id="optIsolate" /> 版本隔离</label>
+                <label class="check" title="暂未实现：目前 mods / 配置所有版本共用，计划下个版本开放"><input type="checkbox" id="optIsolate" disabled /> 版本隔离<span class="muted">（即将支持）</span></label>
               </div>
             </div>
             <div class="field wide">
@@ -611,7 +611,7 @@
             </div>
             <div class="about-main">
               <div class="about-title">FCL <span class="about-alias">FishCraftLauncher</span></div>
-              <p class="muted" id="aboutVersion">Electron 桌面版 · PCL 风格界面</p>
+              <p class="muted"><span id="aboutVersion">v1.4.8</span> · Electron 桌面版 · PCL 风格界面</p>
               <p class="muted" id="aboutEnv"></p>
 
               <div class="credits">
@@ -628,7 +628,12 @@
                 <div class="credit">
                   <span class="credit-role">共同创造</span>
                   <b>WorkBuddy</b>
-                  <span class="muted">初版界面原型：PCL 风格布局、三套主题配色、像素头像与鱼形图标，以及早期 xmcl 接入与交付文档</span>
+                  <span class="muted">初版界面原型：PCL 风格布局、主题配色、像素头像与鱼形图标，以及早期 xmcl 接入与交付文档</span>
+                </div>
+                <div class="credit">
+                  <span class="credit-role">界面重构</span>
+                  <b>AlexBlock</b>
+                  <span class="muted">设计变量与组件样式分层、深色模式与对比度修复、无障碍改造</span>
                 </div>
               </div>
 
@@ -637,8 +642,9 @@
                 早期叫过「大肥鱼启动器」「肥鱼启动器」，中间还用过一阵 <b>FMCL</b>（FishMineCraftLauncher），现在统一为 <b>FCL</b>；肥鱼留作图标上的吉祥物。
               </p>
 
-              <p class="about-note muted">
-                致谢开源项目：Electron · @xmcl/core · @xmcl/user · Modrinth API · MC百科 · BMCLAPI · Adoptium / 清华镜像 · CustomSkinLoader
+              <p class="about-note">
+                <b>致谢</b>：Electron · @xmcl/core / @xmcl/user · EasyTier · CustomSkinLoader（MIT）· Modrinth API · MC百科 · BMCLAPI · PaperMC · Fabric / Forge / NeoForge · Iris · Adoptium / 清华 TUNA / 华为云镜像。
+                没有这些开源项目与镜像站，FCL 跑不起来；完整名单见 README 与发布页。
               </p>
 
               <div class="row">

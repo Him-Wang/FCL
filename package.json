@@ -8,14 +8,14 @@
     "start": "node start.js",
     "icon": "node tools/make-icon.js mint",
     "dist": "tools\\package-win.cmd",
-    "dist:raw": "electron-builder --win --x64",
-    "dist:mac": "electron-builder --mac"
+    "dist:raw": "electron-builder --win --x64"
   },
   "author": "Hermintway",
   "license": "MIT",
   "build": {
     "appId": "com.fcl.launcher",
     "productName": "FCL",
+    "copyright": "Copyright © 2026 Hermintway · 共同创造：DeepSeek Harness、WorkBuddy · 界面重构：AlexBlock",
     "directories": {
       "output": "dist"
     },
@@ -24,7 +24,8 @@
         "portable"
       ],
       "icon": "build/icon.ico",
-      "artifactName": "FCL-${version}-${arch}.${ext}"
+      "artifactName": "FCL-${version}-${arch}.${ext}",
+      "legalTrademarks": "FCL · FishCraftLauncher（见 README 致谢与设置-关于）"
     },
     "nsis": {
       "oneClick": false,
@@ -58,32 +59,6 @@
       "!.verify-game/**",
       "!vendor/**"
     ],
-    "mac": {
-      "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ],
-      "category": "public.app-category.games",
-      "icon": "build/icon.png",
-      "artifactName": "FCL-${version}-mac-${arch}.${ext}",
-      "hardenedRuntime": false,
-      "gatekeeperAssess": false,
-      "extendInfo": {
-        "NSHighResolutionCapable": true
-      }
-    },
     "extraResources": [
       {
         "from": "vendor/easytier",
