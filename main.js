@@ -228,10 +228,14 @@ function currentCloseBehavior() {
 
 const USE_TRANSPARENT = UI_CFG.transparent !== false; // 默认开启；只有配置文件里显式写 false 才用不透明窗口
 
-/* 设置里切换「窗口背景透明」：写进 config.json，重启后生效 */
+/* 设置里切换「关闭窗口时」的行为：closeBehavior 是唯一来源，旧字段一起同步 */
 ipcMain.handle('app:set-close-behavior', async (_e, val) => {
   const b = val === 'minimize' || val === 'quit' ? val : 'ask';
-  const ok = patchCfg({ closeBehavior: b });
+  const ok = patchCfg(
+    b === 'ask'
+      ? { closeBehavior: b, closeAsked: false, closeAskEach: true }
+      : { closeBehavior: b, minimizeToTray: b === 'minimize', closeAsked: true, closeAskV: 2, closeAskEach: false },
+  );
   return ok ? { ok: true, closeBehavior: b } : { ok: false, error: '写入 config.json 失败' };
 });
 
@@ -824,17 +828,17 @@ win.on('closed', () => {
     if (quitting) return;
     e.preventDefault();
 
-    // 已经问过（且是当前这版问的）：按记住的选择走。
-    // closeAskV 用来区分旧配置：1.2.x 写过 closeAsked=true，如果只认这个标记，
-    // 老用户升级后就再也不会看到询问、直接最小化，看起来像"弹窗丢了"。
-    const askedNow = UI_CFG.closeAsked === true && UI_CFG.closeAskV === 2;
-    if (askedNow && UI_CFG.closeAskEach !== true) {
-      if (UI_CFG.minimizeToTray === false) {
-        quitting = true;
-        app.quit();
-      } else {
-        hideToTray();
-      }
+    // 唯一的判断来源：closeBehavior（ask / minimize / quit）。
+    // 以前这里读的是旧字段 closeAsked + closeAskV，而弹窗里的「记住我的选择」写的是
+    // closeBehavior —— 两条写入路径对不上，导致「记住了最小化、下次点 × 还在问」。
+    const behavior = currentCloseBehavior();
+    if (behavior === 'quit') {
+      quitting = true;
+      app.quit();
+      return;
+    }
+    if (behavior === 'minimize') {
+      hideToTray();
       return;
     }
 
@@ -872,7 +876,17 @@ win.on('closed', () => {
     closeAskedPending = false;
     closeAskSeq++;
     const behavior = o.minimize ? 'minimize' : 'quit';
-    patchCfg(o.remember === false ? { closeBehavior: 'ask' } : { closeBehavior: behavior });
+    // 勾了「记住我的选择」→ 写进 closeBehavior；没勾就保持每次都问。
+    // minimizeToTray / closeAsked 一起同步，是为了让旧配置迁移和「默认高亮哪个按钮」保持一致。
+    if (o.remember === false) patchCfg({ closeBehavior: 'ask' });
+    else
+      patchCfg({
+        closeBehavior: behavior,
+        minimizeToTray: !!o.minimize,
+        closeAsked: true,
+        closeAskV: 2,
+        closeAskEach: false,
+      });
     log(
       'info',
       '关闭方式选择：' + (o.minimize ? '最小化到托盘' : '直接退出') + (o.remember === false ? '（本次有效）' : '（已记住）'),
@@ -882,6 +896,15 @@ win.on('closed', () => {
       quitting = true;
       app.quit();
     }
+  });
+
+  // 弹窗被 Esc / 右上角「关闭」收掉（没做选择）：把 pending 复位，否则再点 × 会没反应，
+  // 要等 20 秒兜底定时器跑完才能关。
+  ipcMain.on('app:close-cancel', () => {
+    if (!closeAskedPending) return;
+    closeAskedPending = false;
+    closeAskSeq++;
+    log('info', '取消了关闭询问，窗口保持打开');
   });
 
   win.on('maximize', () => send('win:state', true));

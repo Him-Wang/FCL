@@ -74,6 +74,7 @@ contextBridge.exposeInMainWorld('launcher', {
   onAskClose: (cb) => sub('app:ask-close', cb),
   onCloseTimeout: (cb) => sub('app:close-timeout', cb),
   closeChoice: (opt) => ipcRenderer.send('app:close-choice', opt),
+  cancelClose: () => ipcRenderer.send('app:close-cancel'),
   migrateMinecraft: () => ipcRenderer.invoke('game:migrate'),
   legacyMinecraft: () => ipcRenderer.invoke('game:legacy'),
   pickBackground: () => ipcRenderer.invoke('bg:pick'),

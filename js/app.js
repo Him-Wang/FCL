@@ -6,6 +6,8 @@
   const KEY = 'craftlauncher.v1';
   const L = window.launcher || null;
   const hasElectron = !!L;
+  // 关闭询问弹窗是否还开着（Esc / 关闭时要把主进程那边的 pending 复位）
+  let closePromptOpen = false;
 
   /* 未捕获错误：写到启动日志里，方便事后排查 */
   window.__fclErrorHook = true;
@@ -2708,6 +2710,12 @@ tun device error  err=rust tun error Failed to create adapter</pre>
 
   function closeModal() {
     $('#modal').classList.add('hidden');
+    // 关闭询问弹窗被 Esc / 右上角收掉、并且没做选择时，通知主进程取消这次询问，
+    // 否则主进程一直以为弹窗还开着，再点 × 会没反应。
+    if (closePromptOpen) {
+      closePromptOpen = false;
+      if (hasElectron && L.cancelClose) L.cancelClose();
+    }
   }
 
   function installedList() {
@@ -3060,6 +3068,7 @@ tun device error  err=rust tun error Failed to create adapter</pre>
 
     if (L.onAskClose) {
       L.onAskClose(() => {
+        closePromptOpen = true;
         openModal('关闭 FCL', `
           <p style="margin:0 0 10px">要把 FCL <b>最小化到托盘</b>，还是<b>直接退出</b>？</p>
           <p class="tip" style="margin:0 0 14px">最小化后可从任务栏托盘的小鱼图标重新打开；游戏正在运行时建议最小化。这个选择以后可以在「设置 → 偏好」里修改。</p>
@@ -3071,6 +3080,7 @@ tun device error  err=rust tun error Failed to create adapter</pre>
         `);
         const ask = (minimize) => {
           const remember = $('#closeRemember') ? $('#closeRemember').checked : true;
+          closePromptOpen = false; // 已经做了选择，别再发「取消」
           closeModal();
           if (L.closeChoice) L.closeChoice({ minimize, remember });
         };
