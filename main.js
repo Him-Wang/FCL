@@ -5,7 +5,12 @@ if (process.env.ELECTRON_RUN_AS_NODE) {
     const { spawn } = require('child_process');
     const env = Object.assign({}, process.env);
     delete env.ELECTRON_RUN_AS_NODE;
-    spawn(process.execPath, [], { env, detached: true, stdio: 'ignore' }).unref();
+    // 必须带上原来的启动参数（尤其是 app 目录 / main.js 路径）。
+    // 不带参数时 electron.exe 会启动它自带的默认示例应用，而不是 FCL——
+    // 表现就是"清掉了变量却打开了 Electron 空窗口"，等于没修好。
+    // 打包后的 FCL.exe 通常没有额外参数，slice(1) 为空也正确。
+    const args = process.argv.slice(1);
+    spawn(process.execPath, args, { env, detached: true, stdio: 'ignore' }).unref();
   } catch (e) {}
   process.exit(0);
 }

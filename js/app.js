@@ -358,6 +358,8 @@
     } catch (e) {
       toast('下载失败：' + ipcMsg(e), 6000);
     } finally {
+      // 每次下载都订阅一次进度，用完必须退订，否则反复更新会堆积 IPC 监听器
+      if (typeof off === 'function') off();
       btn.disabled = false;
       btn.textContent = old;
     }
@@ -604,6 +606,8 @@
     } catch (e) {
       toast('修复失败：' + ipcMsg(e), 6000);
     } finally {
+      // 退订进度监听，避免多次依赖修复累积僵尸监听器
+      if (typeof off === 'function') off();
       if (btn) { btn.disabled = false; btn.textContent = old; }
     }
   }
@@ -875,7 +879,7 @@ tun device error  err=rust tun error Failed to create adapter</pre>
   function latestMcList() {
     const local = ((state.env && state.env.installedVersions) || [])
       .map((v) => mcOf(v) || v)
-      .filter((v) => /^\d+(\.\d+)+/.test(v) || /^\d{2}w\d{2}[a-z]$/i.test(v) || isAprilFools(v));
+      .filter(isRealMcVersion);
     return local.concat(releaseVersions()).filter((v, i, a) => a.indexOf(v) === i).slice(0, 14);
   }
 
@@ -899,6 +903,14 @@ tun device error  err=rust tun error Failed to create adapter</pre>
     const s = String(id || '');
     if (APRIL_FOOLS.has(s)) return true;
     return /craftmine|potato|oneBlockAtATime|3D Shareware|RV-Pre|20w14infinite|23w13a_or_b/i.test(s);
+  }
+  /** 是不是一个能拿去 Modrinth / MC百科 / 下载中心筛选资源的真实 MC 版本号。
+   *  正式版、快照（24w14a）、愚人节版都算；加载器目录名（fabric-1.20.1）不算。
+   *  latestMcList / fillModFilters / fillStoreMc 必须共用这一套判断，
+   *  否则前者的列表里有快照，后两者却把 state.version 的快照判成无效、静默选错版本。 */
+  function isRealMcVersion(v) {
+    const s = String(v || '');
+    return /^\d+(\.\d+)+/.test(s) || /^\d{2}w\d{2}[a-z]$/i.test(s) || isAprilFools(s);
   }
   /** 远古版本：old_alpha / old_beta */
   function isAncient(v) {
@@ -1187,7 +1199,7 @@ tun device error  err=rust tun error Failed to create adapter</pre>
   function fillModFilters() {
     const list = latestMcList();
     const mcSel = $('#modOnlineMc');
-    const cur = /^\d+(\.\d+)+/.test(state.version) ? state.version : (list[0] || '');
+    const cur = isRealMcVersion(state.version) ? state.version : (list[0] || '');
     mcSel.innerHTML = list.map((v) => `<option value="${esc(v)}" ${v === cur ? 'selected' : ''}>${esc(v)}</option>`).join('');
     const loaderSel = $('#modOnlineLoader');
     const v = String(state.version || '');
@@ -1363,7 +1375,7 @@ tun device error  err=rust tun error Failed to create adapter</pre>
   function fillStoreMc() {
     const sel = $('#storeMc');
     const list = latestMcList();
-    const cur = /^\d+(\.\d+)+/.test(state.version) ? state.version : (list[0] || '');
+    const cur = isRealMcVersion(state.version) ? state.version : (list[0] || '');
     sel.innerHTML = list.map((v) => `<option value="${esc(v)}" ${v === cur ? 'selected' : ''}>${esc(v)}</option>`).join('');
   }
 
@@ -2525,7 +2537,10 @@ tun device error  err=rust tun error Failed to create adapter</pre>
       // 4) 启动
       setProgress(92);
       setLaunchText('正在启动…');
+      // ensureAccount 之后经过了多次 await（装依赖/校验/续期），期间用户可能删掉了当前账号，
+      // curAcc() 会返回 null。这里必须再判一次，否则 a.name 直接抛 TypeError、误报"启动失败"。
       const a = curAcc();
+      if (!a) throw new Error('启动前账号被移除，请重新选择账号');
       const r = await L.launch({
         gameDir: gameDir(), version: state.version, javaPath: state.settings.javaPath,
         maxMemory: state.settings.mem, width: state.settings.winW, height: state.settings.winH,
