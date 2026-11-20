@@ -29,7 +29,11 @@ const C = (hex) => {
 };
 const shade = (c, k) => [Math.round(c[0] * k), Math.round(c[1] * k), Math.round(c[2] * k)];
 
-/* ---------- 皮肤各部件布局（标准 64×64） ---------- */
+/* ---------- 皮肤各部件布局（标准 64×64） ----------
+ * 这里刻意画了不少 1 像素级细节（眼白/瞳孔/高光、发丝、衣领、纽扣、
+ * 口袋、袖口、腰带扣、拼缝、鞋带），让启动器 3D 预览和游戏里一样有细节，
+ * 而不是一整块纯色。gen-detailed-skin.js 已验证渲染器能完整保留这些细节。
+ */
 function paint(cv, part, colors) {
   const { base, alt } = colors || {};
   if (part === 'head') {
@@ -50,42 +54,69 @@ function baseSkin(o) {
   const shirt = C(o.shirt);
   const pants = C(o.pants);
   const shoe = C(o.shoe || '#3a3f47');
+  const gold = C('#e8c14e');
+  const white = C('#f7f7f2');
+  const brow = shade(hair, 0.8);
 
-  // 头
+  // 头：底色 + 头发（带发丝高光）
   paint(cv, 'head', { base: skin });
-  // 头发：顶、后、两侧 + 前额刘海
   cv.rect(8, 0, 8, 8, hair);
   cv.rect(0, 8, 8, 8, hair);
   cv.rect(24, 8, 8, 8, hair);
-  cv.rect(8, 8, 8, 2, hair);
-  cv.rect(8, 0, 8, 8, hair);
-  // 脸（正面 8,8 ~ 16,16）
+  for (let x = 8; x < 16; x++) cv.set(x, 0, shade(hair, 1.3));      // 头顶高光
+  for (let x = 0; x < 8; x += 2) cv.set(x, 8, shade(hair, 1.25));  // 侧发丝
+  for (let x = 24; x < 32; x += 2) cv.set(x, 8, shade(hair, 1.25));// 后发丝
+  cv.rect(8, 8, 8, 2, hair);                                        // 刘海
+  cv.set(10, 8, shade(hair, 1.25)); cv.set(13, 8, shade(hair, 1.25));
+
+  // 脸（正面 8,8 ~ 16,16）：眼窝 / 眼白 / 瞳孔 / 高光 / 眉毛 / 鼻 / 嘴 / 脸颊
   cv.rect(8, 10, 8, 6, skin);
+  cv.set(10, 10, shade(skin, 0.85)); cv.set(13, 10, shade(skin, 0.85));
+  cv.rect(10, 11, 2, 1, white); cv.rect(13, 11, 2, 1, white);
+  cv.set(10, 11, C(o.eye || '#1a1a22')); cv.set(13, 11, C(o.eye || '#1a1a22'));
+  cv.set(11, 11, white); cv.set(14, 11, white);                     // 瞳孔高光
+  cv.set(10, 10, brow); cv.set(13, 10, brow);                       // 眉毛
+  cv.set(11, 12, shade(skin, 0.88)); cv.set(12, 12, shade(skin, 0.88)); // 鼻影
+  cv.set(11, 14, shade(skin, 0.68)); cv.set(12, 14, shade(skin, 0.55)); // 嘴
+  cv.set(9, 12, shade(skin, 0.92)); cv.set(14, 12, shade(skin, 0.92));  // 脸颊
+
   if (o.hat) {
     const hat = C(o.hat);
     cv.rect(8, 8, 8, 2, hat);
     cv.rect(8, 0, 8, 8, hat);
     cv.rect(0, 8, 8, 8, hat);
     cv.rect(24, 8, 8, 8, hat);
+    cv.set(8, 8, shade(hat, 1.25)); cv.set(15, 8, shade(hat, 0.8));  // 帽檐明暗
   }
-  // 眼睛
-  const eye = C(o.eye || '#2b2b2b');
-  cv.rect(10, 11, 1, 1, eye);
-  cv.rect(13, 11, 1, 1, eye);
-  // 嘴
-  cv.rect(11, 14, 2, 1, shade(skin, 0.72));
-  // 身体（含领口、腰带）
+
+  // 上衣（正面 20,20 ~ 28,32）：条纹 / 衣领 / 纽扣 / 口袋 / 腰带扣
   paint(cv, 'body', { base: shirt });
-  cv.rect(20, 20, 8, 2, shade(shirt, 0.86));
-  cv.rect(20, 30, 8, 2, shade(pants, 1.05));
-  // 手臂：袖子 + 手
+  for (let y = 22; y < 30; y += 2) cv.rect(20, y, 8, 1, shade(shirt, 0.85));
+  cv.rect(20, 20, 8, 2, shade(shirt, 0.72));          // 衣领
+  for (let y = 23; y < 29; y += 2) cv.set(23, y, gold); // 纽扣
+  cv.rect(20, 27, 3, 2, shade(shirt, 0.8));           // 口袋
+  cv.rect(20, 27, 3, 1, shade(shirt, 1.12));
+  cv.rect(20, 30, 8, 2, C('#3a2a1a'));                // 腰带
+  cv.rect(23, 30, 2, 2, gold);                        // 皮带扣
+
+  // 手臂：条纹袖子 / 袖口 / 手
   paint(cv, 'armR', { base: shirt });
   paint(cv, 'armL', { base: shirt });
-  for (const [ax, ay] of [[44, 20], [36, 52]]) cv.rect(ax, ay + 8, 4, 4, skin);
-  // 腿：裤子 + 鞋
+  for (const [ax, ay] of [[44, 20], [36, 52]]) {
+    for (let y = ay; y < ay + 8; y += 2) cv.rect(ax, y, 4, 1, shade(shirt, 0.85));
+    cv.rect(ax, ay + 6, 4, 2, shade(shirt, 0.72));    // 袖口
+    cv.rect(ax, ay + 8, 4, 4, skin);                  // 手
+  }
+
+  // 裤子：侧缝 / 膝盖补丁 / 鞋 / 鞋带
   paint(cv, 'legR', { base: pants });
   paint(cv, 'legL', { base: pants });
-  for (const [lx, ly] of [[4, 20], [20, 52]]) cv.rect(lx, ly + 9, 4, 3, shoe);
+  for (let y = 20; y < 29; y++) { cv.set(4, y, shade(pants, 0.8)); cv.set(20, y, shade(pants, 0.8)); }
+  cv.rect(5, 25, 3, 3, shade(pants, 0.8)); cv.rect(21, 25, 3, 3, shade(pants, 0.8));
+  for (const [lx, ly] of [[4, 20], [20, 52]]) {
+    cv.rect(lx, ly + 9, 4, 3, shoe);
+    for (let x = lx + 1; x < lx + 4; x++) cv.set(x, ly + 9, shade(shoe, 1.7)); // 鞋带
+  }
   return cv;
 }
 

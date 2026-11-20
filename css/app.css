@@ -803,17 +803,22 @@ button.chip.jump:hover b { color: var(--accent-text); }
   backface-visibility: hidden;
   transform-style: preserve-3d;
 }
-.sk3-over { opacity: .92; }
+/* 第二层（帽子/衣服）靠 PNG 自身的 alpha 决定哪里显示，
+ * 不能整体 opacity<1：那会让不透明像素透出底层、发灰发虚，
+ * 而且在 preserve-3d 里 opacity<1 会强制扁平化、打乱前后层顺序。 */
+.sk3-over { opacity: 1; }
 
-/* 模型底部的地面阴影 */
+/* 模型底部的地面阴影（bottom 用 JS 设置的 --sk3-feet = 脚底像素位置） */
 .sk3-host::after {
   content: '';
   position: absolute;
-  bottom: 42px;
-  width: 46%;
-  height: 14px;
+  left: 50%;
+  bottom: calc(50% - var(--sk3-feet, 96px) - 4px);
+  transform: translateX(-50%);
+  width: 34%;
+  height: 12px;
   border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(15, 23, 42, .18), transparent 72%);
+  background: radial-gradient(ellipse at center, rgba(15, 23, 42, .20), transparent 72%);
   pointer-events: none;
 }
 
@@ -828,6 +833,10 @@ button.chip.jump:hover b { color: var(--accent-text); }
 }
 
 .skin3d-empty {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
   font-size: var(--fs-12);
   color: var(--text-muted);
 }

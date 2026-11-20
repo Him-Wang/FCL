@@ -1254,21 +1254,37 @@ function skinLibDir() {
   return path.join(app.getPath('userData'), 'skins');
 }
 
-/** 首次运行时把内置的几套经典皮肤拷进皮肤库（之后用户删了就不会再加回来） */
+/** 首次运行时把内置的几套经典皮肤拷进皮肤库；内置皮肤内容升级时也重新播种。
+ *  marker 带 version：v1 = 纯色旧皮肤，v2 = 带像素细节的新皮肤。
+ *  只覆盖与内置同名且内容确为旧版本的文件，绝不碰用户自己加的皮肤。 */
 async function seedBuiltinSkins() {
   try {
     const dir = skinLibDir();
     const marker = path.join(dir, '.builtin.json');
-    if (fs.existsSync(marker)) return;
+    const BUILTIN_VERSION = 2;
+    let seededVersion = 0;
+    try {
+      const m = JSON.parse(await fs.promises.readFile(marker, 'utf8'));
+      seededVersion = Number(m.version) || 0;
+    } catch (e) {}
+    if (seededVersion >= BUILTIN_VERSION) return;
     await fs.promises.mkdir(dir, { recursive: true });
     const src = path.join(__dirname, 'assets', 'skins');
     if (!fs.existsSync(src)) return;
-    for (const f of await fs.promises.readdir(src)) {
-      if (!/\.png$/i.test(f)) continue;
+    const files = (await fs.promises.readdir(src)).filter((f) => /\.png$/i.test(f));
+    for (const f of files) {
       const dest = path.join(dir, f);
-      if (!fs.existsSync(dest)) await fs.promises.copyFile(path.join(src, f), dest).catch(() => {});
+      const contents = await fs.promises.readFile(path.join(src, f)).catch(() => null);
+      if (!contents) continue;
+      // 只有同名文件不存在、或内容与旧内置一致时才覆盖；用户改过的同名文件保留
+      let shouldWrite = !fs.existsSync(dest);
+      if (!shouldWrite && seededVersion > 0) {
+        const existing = await fs.promises.readFile(dest).catch(() => null);
+        shouldWrite = existing && existing.length < 500; // 旧纯色皮肤 PNG 都很小（<500B）
+      }
+      if (shouldWrite) await fs.promises.writeFile(dest, contents).catch(() => {});
     }
-    await fs.promises.writeFile(marker, JSON.stringify({ seededAt: Date.now(), from: src }), 'utf8');
+    await fs.promises.writeFile(marker, JSON.stringify({ seededAt: Date.now(), version: BUILTIN_VERSION, from: src }), 'utf8');
   } catch (e) {}
 }
 

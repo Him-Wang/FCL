@@ -1667,17 +1667,30 @@ tun device error  err=rust tun error Failed to create adapter</pre>
     renderSkinLib();
   }
 
-  /** 皮肤预览：3D 模型（CSS 3D + 皮肤 UV），可拖拽旋转 / 滚轮缩放 */
+  /** 皮肤预览数据分发：
+   *  - WebGL 后端（skinview3d）直接吃原始 dataUrl：它内部处理 64×32 老格式、
+   *    fixOpaque、slim 自动识别，并且保留 HD 皮肤全分辨率 → 细节不丢。
+   *  - CSS 回退后端才需要归一化（skin3d.js 里的 cssNormalizeIfNeeded 会调用
+   *    这里传入的 normalizeSkin），否则纹理采样会取错区域。
+   *  绝不能在这里预先把图降到 64×64，那正是 HD 细节丢失的根因。 */
   function drawSkin(a) {
     const host = $('#skinPreview');
     if (!host) return;
     const skin = skinOf(a);
     if (!skin.dataUrl) {
+      // clear() 会移除 sk3-host class，清完再加回，否则 340px 舞台会塌陷、文字不对中
+      host.__sk3Token = (host.__sk3Token || 0) + 1;
       if (window.Skin3D) window.Skin3D.clear(host);
+      host.classList.add('skin3d-host');
       host.innerHTML = '<div class="skin3d-empty">未设置皮肤</div>';
       return;
     }
-    if (window.Skin3D) window.Skin3D.build(host, skin.dataUrl, skin.variant || 'classic');
+    const token = (host.__sk3Token = (host.__sk3Token || 0) + 1);
+    // 不等异步：WebGL 同步构建；CSS 回退由 skin3d.js 内部异步归一化
+    if (host.__sk3Token !== token || !document.contains(host)) return;
+    if (window.Skin3D) {
+      window.Skin3D.build(host, skin.dataUrl, skin.variant || 'classic', normalizeSkin);
+    }
   }
 
   /** 读本地图片：直接用 <input type=file>，不依赖系统文件对话框（无边框/透明窗口下对话框可能弹不出来） */
@@ -1696,23 +1709,100 @@ tun device error  err=rust tun error Failed to create adapter</pre>
     });
   }
 
-  /** 统一成 64×64 皮肤（大图按最近邻缩小，保留像素感） */
+  /** 统一成 64×64 皮肤，与 skinview3d 的 loadSkinToCanvas 做法一致：
+   *  - 64×64（及 128/192… 整数倍）最近邻缩到 64×64
+   *  - 64×32（及 2:1 整数倍）是 1.7 之前的老格式：上半部是全部贴图，
+   *    下半部要按官方映射补出左臂/左腿（水平翻转），否则渲染时左右臂纹理全错位。
+   *  - 同时清掉老皮肤不透明的「第二层」区域，避免帽子/衣服变成实心色块
+   */
   function normalizeSkin(dataUrl, width, height) {
     return new Promise((resolve) => {
       const img = new Image();
       img.onerror = () => resolve(dataUrl);
       img.onload = () => {
-        const base = height > 32 ? 64 : 64; // 统一按 64 宽输出
-        const cw = 64;
-        const ch = height === width ? 64 : 32;
-        const c = document.createElement('canvas');
-        c.width = cw;
-        c.height = ch;
-        const ctx = c.getContext('2d');
-        ctx.imageSmoothingEnabled = false;
-        ctx.clearRect(0, 0, cw, ch);
-        ctx.drawImage(img, 0, 0, cw, ch);
-        resolve(c.toDataURL('image/png'));
+        try {
+          const c = document.createElement('canvas');
+          c.width = 64;
+          c.height = 64;
+          const ctx = c.getContext('2d', { willReadFrequently: true });
+          ctx.imageSmoothingEnabled = false;
+          ctx.clearRect(0, 0, 64, 64);
+
+          const isLegacy = width === height * 2;
+          if (isLegacy) {
+            // 上半部（0..31）画到 64×64 的 0..31 行
+            ctx.drawImage(img, 0, 0, width, height, 0, 0, 64, 32);
+            // 按下半部缺失的 6 个区域，从右臂/右腿水平翻转复制
+            ctx.save();
+            ctx.scale(-1, 1); // 用负目标宽度实现水平翻转
+            const copy = (sx, sy, sw, sh, dx, dy) => {
+              ctx.drawImage(c, sx, sy, sw, sh, -dx, dy, -sw, sh);
+            };
+            copy(4, 16, 4, 4, 20, 48);  // 左腿顶
+            copy(8, 16, 4, 4, 24, 48);  // 左腿底
+            copy(0, 20, 4, 12, 24, 52); // 左腿外侧
+            copy(4, 20, 4, 12, 20, 52); // 左腿前
+            copy(8, 20, 4, 12, 16, 52); // 左腿内侧
+            copy(12, 20, 4, 12, 28, 52);// 左腿后
+            copy(44, 16, 4, 4, 36, 48); // 左臂顶
+            copy(48, 16, 4, 4, 40, 48); // 左臂底
+            copy(40, 20, 4, 12, 40, 52);// 左臂外侧
+            copy(44, 20, 4, 12, 36, 52);// 左臂前
+            copy(48, 20, 4, 12, 32, 52);// 左臂内侧
+            copy(52, 20, 4, 12, 44, 52);// 左臂后
+            ctx.restore();
+          } else {
+            ctx.drawImage(img, 0, 0, width, height, 0, 0, 64, 64);
+          }
+
+          // 老皮肤常把第二层画成不透明（黑/白/皮肤色），games 里是透明覆盖层。
+          // 若这些区域完全不透明就清掉，否则会出现「实心帽子/衣服」。
+          try {
+            const data = ctx.getImageData(0, 0, 64, 64);
+            const opaque = (x, y, w, h) => {
+              for (let j = y; j < y + h; j++) {
+                for (let i = x; i < x + w; i++) {
+                  if (data.data[(j * 64 + i) * 4 + 3] !== 255) return false;
+                }
+              }
+              return true;
+            };
+            const clear = (x, y, w, h) => ctx.clearRect(x, y, w, h);
+            // 老格式(2:1)：上半部整块不透明 -> 只清帽子层；
+            // 新格式(1:1)：整张贴纸没有透明像素 -> 清掉全部第二层区域。
+            // 与 skinview3d 的 fixOpaqueSkin 行为一致，避免误删合法覆盖层。
+            const clearHat = () => {
+              clear(40, 0, 8, 8); clear(48, 0, 8, 8);
+              clear(32, 8, 8, 8); clear(40, 8, 8, 8);
+              clear(48, 8, 8, 8); clear(56, 8, 8, 8);
+            };
+            if (isLegacy) {
+              if (opaque(0, 0, 64, 32)) clearHat();
+            } else if (opaque(0, 0, 64, 64)) {
+              clearHat();
+              // 第二层：身体 / 双腿 / 双臂
+              clear(4, 32, 4, 4); clear(8, 32, 4, 4);
+              clear(0, 36, 4, 12); clear(4, 36, 4, 12);
+              clear(8, 36, 4, 12); clear(12, 36, 4, 12);
+              clear(20, 32, 8, 4); clear(28, 32, 8, 4);
+              clear(16, 36, 4, 12); clear(20, 36, 8, 12);
+              clear(28, 36, 4, 12); clear(32, 36, 8, 12);
+              clear(44, 32, 4, 4); clear(48, 32, 4, 4);
+              clear(40, 36, 4, 12); clear(44, 36, 4, 12);
+              clear(48, 36, 4, 12); clear(52, 36, 12, 12);
+              clear(4, 48, 4, 4); clear(8, 48, 4, 4);
+              clear(0, 52, 4, 12); clear(4, 52, 4, 12);
+              clear(8, 52, 4, 12); clear(12, 52, 4, 12);
+              clear(52, 48, 4, 4); clear(56, 48, 4, 4);
+              clear(48, 52, 4, 12); clear(52, 52, 4, 12);
+              clear(56, 52, 4, 12); clear(60, 52, 4, 12);
+            }
+          } catch (e) {}
+
+          resolve(c.toDataURL('image/png'));
+        } catch (e) {
+          resolve(dataUrl);
+        }
       };
       img.src = dataUrl;
     });
@@ -1943,8 +2033,12 @@ tun device error  err=rust tun error Failed to create adapter</pre>
   }
 
   function faceThumb(it) {
-    if (faceThumbCache.has(it.id)) return faceThumbCache.get(it.id);
-    const p = new Promise((resolve) => {
+    if (faceThumbCache.has(it.id)) {
+      // 皮肤内容可能变（同 id 换图），dataUrl 变了就重算
+      const c = faceThumbCache.get(it.id);
+      if (c && c.src === it.dataUrl) return c.promise;
+    }
+    const promise = new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
         try {
@@ -1964,8 +2058,8 @@ tun device error  err=rust tun error Failed to create adapter</pre>
       img.onerror = () => resolve(it.dataUrl);
       img.src = it.dataUrl;
     });
-    faceThumbCache.set(it.id, p);
-    return p;
+    faceThumbCache.set(it.id, { src: it.dataUrl, promise });
+    return promise;
   }
 
   async function renderSkinLib() {
@@ -2003,7 +2097,6 @@ tun device error  err=rust tun error Failed to create adapter</pre>
     a.skin = Object.assign({}, skinOf(a), { dataUrl: it.dataUrl, name: it.name });
     save();
     renderSkin();
-    renderSkinLib();
     // 已经启用过 CSL 的话，立刻把新皮肤同步进去，下次进游戏就是新皮肤
     try {
       const cur = state.version || '';
